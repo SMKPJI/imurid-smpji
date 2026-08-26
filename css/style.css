@@ -458,6 +458,7 @@ main.container {
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;  /* bar berlabuh di bawah, naik ke atas */
   align-items: center;
   height: 100%;
   min-width: 0;
