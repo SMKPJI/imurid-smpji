@@ -133,11 +133,64 @@ function setupTabKehadiran() {
   // Baiki header baris 1 sahaja (data sedia ada di bawah kekal)
   sheet.getRange(1, 1, 1, headerKehadiran.length).setValues([headerKehadiran]);
   sheet.getRange(1, 1, 1, headerKehadiran.length).setFontWeight('bold');
+  // PENTING: paksa header sebagai TEKS supaya "Jan 2026" tidak jadi tarikh
+  sheet.getRange(1, 1, 1, headerKehadiran.length).setNumberFormat('@');
   sheet.setFrozenRows(1);
   const widths = [130, 280].concat(Array(12).fill(60)).concat([70]);
   widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
   
+  // Baiki juga kolum Bulan dalam tab Arkib (elak auto-jadi tarikh)
+  const arkib = ss.getSheetByName(CONFIG.SHEETS.ARKIB);
+  if (arkib) {
+    const lastRow = Math.max(arkib.getLastRow(), 2);
+    arkib.getRange(2, 1, lastRow - 1, 1).setNumberFormat('@');
+  }
+  
   SpreadsheetApp.getUi().alert('✅ Tab Kehadiran dibaiki: header ' + headerKehadiran.join(', ') + '\n\nData Murid TIDAK disentuh.');
+}
+
+// ============================================================
+// 🧹 BAET SEMUA — format teks + buang rekod pelik
+// ============================================================
+// 1. Format kolum Bulan (Arkib) sebagai Plain Text
+// 2. Format header Kehadiran sebagai teks
+// 3. Padam rekod Arkib yang Bulan-nya format tarikh (bukan "Jan 2026")
+// ============================================================
+function baikiSemua() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // 1. Arkib: format kolum Bulan sebagai teks + buang rekod pelik
+  const arkib = ss.getSheetByName(CONFIG.SHEETS.ARKIB);
+  if (arkib) {
+    const data = arkib.getDataRange().getValues();
+    let dipadam = 0;
+    for (let i = data.length - 1; i >= 1; i--) {
+      const b = String(data[i][0] || '');
+      // Rekod pelik = format tarikh (bukan "Jan 2026" pattern)
+      if (b.indexOf('-') !== -1 || /^\d{4}/.test(b)) {
+        arkib.deleteRow(i + 1);
+        dipadam++;
+      }
+    }
+    const lastRow = Math.max(arkib.getLastRow(), 2);
+    arkib.getRange(2, 1, lastRow - 1, 1).setNumberFormat('@');
+  }
+  
+  // 2. Kehadiran: header teks
+  const k = ss.getSheetByName(CONFIG.SHEETS.KEHADIRAN);
+  if (k) {
+    const lastCol = Math.max(k.getLastColumn(), 14);
+    k.getRange(1, 1, 1, lastCol).setNumberFormat('@');
+  }
+  
+  // 3. Murid: NoIC & ID sebagai teks (elak 0 depan hilang)
+  const m = ss.getSheetByName(CONFIG.SHEETS.MURID);
+  if (m) {
+    const lastRow = Math.max(m.getLastRow(), 2);
+    m.getRange(2, 1, lastRow - 1, 3).setNumberFormat('@');
+  }
+  
+  SpreadsheetApp.getUi().alert('✅ BaikiSemua siap!\n\n- Rekod Arkib format tarikh: dipadam ' + dipadam + '\n- Kolum Bulan: Plain Text\n- Header Kehadiran: teks\n- NoIC Murid: teks');
 }
 
 // ============================================================
