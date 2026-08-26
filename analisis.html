@@ -136,7 +136,7 @@ function renderHalaman() {
   /* --- Gabung mengikut kelas --- */
   var kelasMap = {};
   murid.forEach(function (m) {
-    var k = m.kelas || 'Tiada Kelas';
+    var k = m.kelasPenuh || 'Tiada Kelas';
     if (!kelasMap[k]) kelasMap[k] = { kelas: k, bil: 0, jumlah: 0 };
     kelasMap[k].bil += 1;
     kelasMap[k].jumlah += jumlahMurid(cariKehadiran(kehadiran, m.ic), kPilih);
@@ -156,7 +156,7 @@ function renderHalaman() {
       var purata = k.bil ? (k.jumlah / k.bil) : 0;
       var lebar = Math.max(2, Math.round((k.jumlah / maks) * 100));
       return '<tr>' +
-        '<td><span class="lencana lencana-kelas">' + esc(k.kelas) + '</span></td>' +
+        '<td><span class="lencana lencana-kelas">' + esc(k.kelasPenuh) + '</span></td>' +
         '<td class="ta-tengah">' + k.bil + '</td>' +
         '<td class="ta-kanan kuat">' + k.jumlah + '</td>' +
         '<td class="ta-kanan">' + purata.toFixed(1) + '</td>' +
@@ -179,7 +179,7 @@ function renderHalaman() {
   var berisiko = [];
   murid.forEach(function (m) {
     var j = jumlahMurid(cariKehadiran(kehadiran, m.ic), kPilih);
-    if (j > 10) berisiko.push({ nama: m.nama, kelas: m.kelas, jumlah: j });
+    if (j > 10) berisiko.push({ nama: m.nama, kelas: m.kelasPenuh, jumlah: j });
   });
   berisiko.sort(function (a, b) { return b.jumlah - a.jumlah; });
 
@@ -190,7 +190,7 @@ function renderHalaman() {
     tb.innerHTML = berisiko.map(function (b) {
       return '<tr>' +
         '<td class="kuat">' + esc(b.nama) + '</td>' +
-        '<td><span class="lencana lencana-kelas">' + esc(b.kelas) + '</span></td>' +
+        '<td><span class="lencana lencana-kelas">' + esc(b.kelasPenuh) + '</span></td>' +
         '<td class="ta-kanan kuat">' + b.jumlah + '</td>' +
         '<td><span class="lencana lencana-merah">⚠ Berisiko</span></td>' +
       '</tr>';

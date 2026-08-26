@@ -157,7 +157,7 @@ function renderHalaman() {
     return {
       nama: k.nama || (m ? m.nama : ''),
       ic: k.ic || (m ? m.ic : ''),
-      kelas: m ? m.kelas : '—',
+      kelas: m ? m.kelasPenuh : '—',
       jumlah: parseInt(k.jumlah, 10) || 0
     };
   }).sort(function (a, b) { return b.jumlah - a.jumlah; }).slice(0, 10);
@@ -169,7 +169,7 @@ function renderHalaman() {
       '<td class="ta-tengah kuat">' + pangkat + '</td>' +
       '<td>' + esc(b.nama) + '</td>' +
       '<td class="mono">' + esc(formatIC(b.ic)) + '</td>' +
-      '<td><span class="lencana lencana-kelas">' + esc(b.kelas) + '</span></td>' +
+      '<td><span class="lencana lencana-kelas">' + esc(b.kelasPenuh) + '</span></td>' +
       '<td class="ta-kanan kuat">' + b.jumlah + '</td>' +
     '</tr>';
   }).join('');

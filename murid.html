@@ -105,7 +105,7 @@ function kadProfil(m, kh) {
         '<h3 class="profil-nama">' + esc(m.nama) + '</h3>' +
         '<p class="profil-ic mono">' + esc(formatIC(m.ic)) + '</p>' +
         '<p style="margin:0">' +
-          '<span class="lencana lencana-kelas">' + esc(m.kelas || 'Tiada Kelas') + '</span>' +
+          '<span class="lencana lencana-kelas">' + esc(m.kelasPenuh || 'Tiada Kelas') + '</span>' +
           ' <span class="lencana lencana-biru">Jumlah: ' + jumlah + ' hari</span>' +
         '</p>' +
       '</div>' +

@@ -41,7 +41,7 @@ function setupSheet() {
   sheetPertama.setName(CONFIG.SHEETS.TETAPAN);
   
   setupTab(ss, CONFIG.SHEETS.TETAPAN, ['Kunci', 'Nilai'], [200, 300]);
-  setupTab(ss, CONFIG.SHEETS.MURID, ['ID', 'Nama', 'NoIC', 'Kelas'], [80, 280, 130, 120]);
+  setupTab(ss, CONFIG.SHEETS.MURID, ['ID', 'Nama', 'NoIC', 'Tingkatan', 'Kelas'], [80, 280, 130, 120, 120]);
   const headerKehadiran = ['NoIC', 'Nama'].concat(BULAN.map(b => b + ' 2026')).concat(['Jumlah']);
   setupTab(ss, CONFIG.SHEETS.KEHADIRAN, headerKehadiran, [130, 280].concat(Array(12).fill(60)).concat([70]));
   setupTab(ss, CONFIG.SHEETS.ARKIB, ['Bulan', 'Status', 'Tarikh', 'FailID'], [100, 120, 120, 200]);
@@ -75,20 +75,20 @@ function seedData(ss) {
 
   const m = ss.getSheetByName(CONFIG.SHEETS.MURID);
   const murid = [
-    ['m01', "A'ISYAH BINTI MOHD ASRAF", '111128101460', '1 Amanah'],
-    ['m02', 'AABHARANA A/P MUTHU', '111111141474', '1 Amanah'],
-    ['m03', 'ABBY CHAI ZHI HUI', '090418140302', '1 Bestari'],
-    ['m04', 'AHMAD FAIZ BIN RAZAK', '010203040506', '1 Bestari'],
-    ['m05', 'SITI AMINAH BINTI KAMAL', '020304050607', '2 Amanah'],
-    ['m06', 'LIM WEI JIE', '050607080910', '2 Amanah'],
-    ['m07', 'NURUL IZZAH BINTI HASSAN', '080910111213', '2 Bestari'],
-    ['m08', 'KAVINESH A/L MURUGAN', '070809101112', 'Peralihan Arif'],
-    ['m09', 'FARIS DANIEL BIN AZMAN', '091011121314', 'Peralihan Arif'],
-    ['m10', 'TAN MEI LING', '060708091011', '3 Amanah'],
-    ['m11', 'MOHAMAD HAKIM BIN ZAINAL', '030405060708', '3 Amanah'],
-    ['m12', 'AINA SOFEA BINTI RAHMAN', '101112131415', '3 Bestari']
+    ['m01', "A'ISYAH BINTI MOHD ASRAF", '111128101460', '1', 'Amanah'],
+    ['m02', 'AABHARANA A/P MUTHU', '111111141474', '1', 'Amanah'],
+    ['m03', 'ABBY CHAI ZHI HUI', '090418140302', '1', 'Bestari'],
+    ['m04', 'AHMAD FAIZ BIN RAZAK', '010203040506', '1', 'Bestari'],
+    ['m05', 'SITI AMINAH BINTI KAMAL', '020304050607', '2', 'Amanah'],
+    ['m06', 'LIM WEI JIE', '050607080910', '2', 'Amanah'],
+    ['m07', 'NURUL IZZAH BINTI HASSAN', '080910111213', '2', 'Bestari'],
+    ['m08', 'KAVINESH A/L MURUGAN', '070809101112', 'Peralihan', 'Arif'],
+    ['m09', 'FARIS DANIEL BIN AZMAN', '091011121314', 'Peralihan', 'Arif'],
+    ['m10', 'TAN MEI LING', '060708091011', '3', 'Amanah'],
+    ['m11', 'MOHAMAD HAKIM BIN ZAINAL', '030405060708', '3', 'Amanah'],
+    ['m12', 'AINA SOFEA BINTI RAHMAN', '101112131415', '3', 'Bestari']
   ];
-  m.getRange(2, 1, murid.length, 4).setValues(murid);
+  m.getRange(2, 1, murid.length, 5).setValues(murid);
 
   // Kehadiran contoh (12 murid, 12 bulan)
   const k = ss.getSheetByName(CONFIG.SHEETS.KEHADIRAN);

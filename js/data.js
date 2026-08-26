@@ -50,18 +50,18 @@ var MOCK_TETAPAN = {
 };
 
 var MOCK_MURID = [
-  { id: 'M001', nama: 'Nur Aisyah binti Ahmad',            ic: '130101140001', kelas: '1 Amanah'      },
-  { id: 'M002', nama: 'Muhammad Daniel bin Ismail',        ic: '130215080312', kelas: '1 Amanah'      },
-  { id: 'M003', nama: 'Nurul Izzah binti Abdullah',        ic: '130305041234', kelas: '1 Amanah'      },
-  { id: 'M004', nama: 'Ahmad Faiz bin Rahman',             ic: '130410021187', kelas: '1 Amanah'      },
-  { id: 'M005', nama: 'Siti Nurhaliza binti Yusof',        ic: '130520100212', kelas: '1 Bestari'     },
-  { id: 'M006', nama: 'Muhammad Haikal bin Zulkifli',      ic: '130605031908', kelas: '1 Bestari'     },
-  { id: 'M007', nama: 'Nur Anis Syazwani binti Kamarudin', ic: '130712020454', kelas: '1 Bestari'     },
-  { id: 'M008', nama: 'Lim Wei Jian',                      ic: '120815071021', kelas: '2 Amanah'      },
-  { id: 'M009', nama: 'Aina Sofea binti Mohd Nazri',       ic: '120921050688', kelas: '2 Amanah'      },
-  { id: 'M010', nama: 'Muhammad Adam bin Hassan',          ic: '121105011455', kelas: '2 Amanah'      },
-  { id: 'M011', nama: 'Farah Nadia binti Aziz',            ic: '130110060321', kelas: 'Peralihan Arif' },
-  { id: 'M012', nama: 'Tan Wen Xuan',                      ic: '130225081110', kelas: 'Peralihan Arif' }
+  { id: 'M001', nama: 'Nur Aisyah binti Ahmad',            ic: '130101140001', tingkatan: '1', kelas: 'Amanah', kelasPenuh: '1 Amanah' },
+  { id: 'M002', nama: 'Muhammad Daniel bin Ismail',        ic: '130215080312', tingkatan: '1', kelas: 'Amanah', kelasPenuh: '1 Amanah' },
+  { id: 'M003', nama: 'Nurul Izzah binti Abdullah',        ic: '130305041234', tingkatan: '1', kelas: 'Amanah', kelasPenuh: '1 Amanah' },
+  { id: 'M004', nama: 'Ahmad Faiz bin Rahman',             ic: '130410021187', tingkatan: '1', kelas: 'Amanah', kelasPenuh: '1 Amanah' },
+  { id: 'M005', nama: 'Siti Nurhaliza binti Yusof',        ic: '130520100212', tingkatan: '1', kelas: 'Bestari', kelasPenuh: '1 Bestari' },
+  { id: 'M006', nama: 'Muhammad Haikal bin Zulkifli',      ic: '130605031908', tingkatan: '1', kelas: 'Bestari', kelasPenuh: '1 Bestari' },
+  { id: 'M007', nama: 'Nur Anis Syazwani binti Kamarudin', ic: '130712020454', tingkatan: '1', kelas: 'Bestari', kelasPenuh: '1 Bestari' },
+  { id: 'M008', nama: 'Lim Wei Jian',                      ic: '120815071021', tingkatan: '2', kelas: 'Amanah', kelasPenuh: '2 Amanah' },
+  { id: 'M009', nama: 'Aina Sofea binti Mohd Nazri',       ic: '120921050688', tingkatan: '2', kelas: 'Amanah', kelasPenuh: '2 Amanah' },
+  { id: 'M010', nama: 'Muhammad Adam bin Hassan',          ic: '121105011455', tingkatan: '2', kelas: 'Amanah', kelasPenuh: '2 Amanah' },
+  { id: 'M011', nama: 'Farah Nadia binti Aziz',            ic: '130110060321', tingkatan: 'Peralihan', kelas: 'Arif', kelasPenuh: 'Peralihan Arif' },
+  { id: 'M012', nama: 'Tan Wen Xuan',                      ic: '130225081110', tingkatan: 'Peralihan', kelas: 'Arif', kelasPenuh: 'Peralihan Arif' }
 ];
 
 /* Nilai = bilangan hari tidak hadir bagi setiap bulan (2026) */
@@ -220,11 +220,16 @@ function syncDataFromApi() {
 
       /* Murid — NoIC mungkin tiba sebagai nombor (sifar pendahulu hilang) */
       var murid = (data.murid || []).map(function (r) {
+        var tgkt = String(r.Tingkatan || '').trim();
+        var kl = String(r.Kelas || '').trim();
         return {
           id:    String(r.ID || ''),
           nama:  String(r.Nama || ''),
           ic:    String(r.NoIC == null ? '' : r.NoIC).trim().padStart(12, '0'),
-          kelas: String(r.Kelas || '')
+          tingkatan: tgkt,
+          kelas: kl,
+          /* Gabung untuk paparan: "1 Amanah", "Peralihan Arif" */
+          kelasPenuh: (tgkt && kl) ? (tgkt + ' ' + kl) : (tgkt || kl)
         };
       });
 
