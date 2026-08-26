@@ -118,6 +118,29 @@ function seedData(ss) {
 }
 
 // ============================================================
+// ⚠️ BAET TAB KEHADIRAN SAHAJA (tak sentuh tab Murid!)
+// ============================================================
+// Guna fungsi ni jika tab Kehadiran takde header bulan yang betul.
+// Ia hanya baiki/cipta tab Kehadiran — data Murid SELAMAT.
+// ============================================================
+function setupTabKehadiran() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const headerKehadiran = ['NoIC', 'Nama'].concat(BULAN.map(b => b + ' 2026')).concat(['Jumlah']);
+  
+  let sheet = ss.getSheetByName(CONFIG.SHEETS.KEHADIRAN);
+  if (!sheet) sheet = ss.insertSheet(CONFIG.SHEETS.KEHADIRAN);
+  
+  // Baiki header baris 1 sahaja (data sedia ada di bawah kekal)
+  sheet.getRange(1, 1, 1, headerKehadiran.length).setValues([headerKehadiran]);
+  sheet.getRange(1, 1, 1, headerKehadiran.length).setFontWeight('bold');
+  sheet.setFrozenRows(1);
+  const widths = [130, 280].concat(Array(12).fill(60)).concat([70]);
+  widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+  
+  SpreadsheetApp.getUi().alert('✅ Tab Kehadiran dibaiki: header ' + headerKehadiran.join(', ') + '\n\nData Murid TIDAK disentuh.');
+}
+
+// ============================================================
 // REST API — GET
 // ============================================================
 function doGet(e) {
