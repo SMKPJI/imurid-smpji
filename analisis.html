@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ms" data-tema="gelap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iMurid-SMPJI — Analisis Kelas</title>
+  <meta name="description" content="Analisis kehadiran mengikut kelas — SMK (P) Jalan Ipoh">
+  <!-- Skrip no-flash tema -->
+  <script>(function(){try{var t=localStorage.getItem('imurid_tema');if(!t){t='gelap';localStorage.setItem('imurid_tema',t);}document.documentElement.setAttribute('data-tema',t);}catch(e){}})();</script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<main class="container">
+
+  <section class="hero hero-ringkas">
+    <p class="hero-sekolah" id="hero-sekolah">SMK (P) Jalan Ipoh</p>
+    <h1 class="hero-tajuk">Analisis Kelas</h1>
+    <p class="hero-sub">Perbandingan kehadiran mengikut kelas dan senarai murid berisiko</p>
+  </section>
+
+  <section class="seksyen">
+    <div class="seksyen-kepala seksyen-kepala-baris">
+      <div>
+        <h2 class="seksyen-tajuk">Penapis Bulan</h2>
+        <p class="seksyen-huraian" id="huraian-tempoh">Tempoh: Januari — Disember 2026</p>
+      </div>
+      <div class="kumpulan-input kumpulan-input-inline">
+        <label for="pilih-bulan">Bulan</label>
+        <select id="pilih-bulan">
+          <option value="">Semua Bulan</option>
+          <option value="jan">Januari</option>
+          <option value="feb">Februari</option>
+          <option value="mac">Mac</option>
+          <option value="apr">April</option>
+          <option value="mei">Mei</option>
+          <option value="jun">Jun</option>
+          <option value="jul">Julai</option>
+          <option value="ogs">Ogos</option>
+          <option value="sep">September</option>
+          <option value="okt">Oktober</option>
+          <option value="nov">November</option>
+          <option value="dis">Disember</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="seksyen">
+    <div class="seksyen-kepala">
+      <h2 class="seksyen-tajuk">Kerap Tidak Hadir Mengikut Kelas</h2>
+      <p class="seksyen-huraian" id="huraian-kelas">Jumlah hari tidak hadir bagi setiap kelas</p>
+    </div>
+    <div class="meja-wrap">
+      <table class="meja">
+        <thead>
+          <tr>
+            <th>Kelas</th>
+            <th class="ta-tengah">Bilangan Murid</th>
+            <th class="ta-kanan">Jumlah Tidak Hadir</th>
+            <th class="ta-kanan">Purata Seorang</th>
+            <th>Perbandingan</th>
+          </tr>
+        </thead>
+        <tbody id="tubuh-kelas"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="seksyen">
+    <div class="seksyen-kepala">
+      <h2 class="seksyen-tajuk">Murid Berisiko (&gt;10 Hari Tidak Hadir)</h2>
+      <p class="seksyen-huraian" id="huraian-berisiko">Murid yang perlu diberi perhatian</p>
+    </div>
+    <div class="meja-wrap">
+      <table class="meja">
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Kelas</th>
+            <th class="ta-kanan">Jumlah (hari)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tubuh-berisiko"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/data.js"></script>
+<script src="js/common.js"></script>
+<script>
+/* ==========================================================================
+   Logik Halaman: Analisis Kelas
+   ========================================================================== */
+function cariKehadiran(kehadiran, ic) {
+  var icBersih = String(ic || '').replace(/[^0-9]/g, '');
+  for (var i = 0; i < kehadiran.length; i++) {
+    if (String(kehadiran[i].ic || '').replace(/[^0-9]/g, '') === icBersih) return kehadiran[i];
+  }
+  return null;
+}
+
+function jumlahMurid(kh, kPilih) {
+  if (!kh) return 0;
+  if (kPilih) return parseInt((kh.bulan && kh.bulan[kPilih]) || 0, 10) || 0;
+  if (typeof kh.jumlah === 'number') return kh.jumlah;
+  var s = 0;
+  BULAN.forEach(function (b) { s += parseInt((kh.bulan && kh.bulan[b.k]) || 0, 10) || 0; });
+  return s;
+}
+
+function renderHalaman() {
+  var pilih = document.getElementById('pilih-bulan');
+  var kPilih = pilih ? pilih.value : '';
+  var murid = getMurid();
+  var kehadiran = getKehadiran();
+  var tempoh = kPilih ? 'Tempoh: ' + bulanPenuh(kPilih) + ' 2026' : 'Tempoh: Januari — Disember 2026';
+
+  var el = document.getElementById('huraian-tempoh');
+  if (el) el.textContent = tempoh;
+
+  var hk = document.getElementById('huraian-kelas');
+  if (hk) {
+    hk.textContent = kPilih
+      ? 'Jumlah hari tidak hadir bagi setiap kelas — ' + bulanPenuh(kPilih) + ' 2026'
+      : 'Jumlah hari tidak hadir bagi setiap kelas (keseluruhan tahun)';
+  }
+
+  /* --- Gabung mengikut kelas --- */
+  var kelasMap = {};
+  murid.forEach(function (m) {
+    var k = m.kelas || 'Tiada Kelas';
+    if (!kelasMap[k]) kelasMap[k] = { kelas: k, bil: 0, jumlah: 0 };
+    kelasMap[k].bil += 1;
+    kelasMap[k].jumlah += jumlahMurid(cariKehadiran(kehadiran, m.ic), kPilih);
+  });
+
+  var kelasArr = Object.keys(kelasMap).map(function (k) { return kelasMap[k]; })
+    .sort(function (a, b) { return b.jumlah - a.jumlah; });
+
+  var maks = 1;
+  kelasArr.forEach(function (k) { if (k.jumlah > maks) maks = k.jumlah; });
+
+  var tubuh = document.getElementById('tubuh-kelas');
+  if (!kelasArr.length) {
+    tubuh.innerHTML = '<tr><td colspan="5" class="ta-tengah kosong">Tiada data kelas.</td></tr>';
+  } else {
+    tubuh.innerHTML = kelasArr.map(function (k) {
+      var purata = k.bil ? (k.jumlah / k.bil) : 0;
+      var lebar = Math.max(2, Math.round((k.jumlah / maks) * 100));
+      return '<tr>' +
+        '<td><span class="lencana lencana-kelas">' + esc(k.kelas) + '</span></td>' +
+        '<td class="ta-tengah">' + k.bil + '</td>' +
+        '<td class="ta-kanan kuat">' + k.jumlah + '</td>' +
+        '<td class="ta-kanan">' + purata.toFixed(1) + '</td>' +
+        '<td><div class="palang-sel">' +
+          '<div class="palang-luar"><div class="palang-dalam" style="width:' + lebar + '%"></div></div>' +
+          '<span class="palang-nilai">' + k.jumlah + '</span>' +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* --- Murid berisiko (>10 hari) --- */
+  var hb = document.getElementById('huraian-berisiko');
+  if (hb) {
+    hb.textContent = kPilih
+      ? 'Murid melebihi 10 hari tidak hadir pada ' + bulanPenuh(kPilih) + ' 2026'
+      : 'Murid melebihi 10 hari tidak hadir sepanjang tahun (perlu perhatian)';
+  }
+
+  var berisiko = [];
+  murid.forEach(function (m) {
+    var j = jumlahMurid(cariKehadiran(kehadiran, m.ic), kPilih);
+    if (j > 10) berisiko.push({ nama: m.nama, kelas: m.kelas, jumlah: j });
+  });
+  berisiko.sort(function (a, b) { return b.jumlah - a.jumlah; });
+
+  var tb = document.getElementById('tubuh-berisiko');
+  if (!berisiko.length) {
+    tb.innerHTML = '<tr><td colspan="4" class="ta-tengah kosong">Tiada murid berisiko dalam tempoh ini. 🎉</td></tr>';
+  } else {
+    tb.innerHTML = berisiko.map(function (b) {
+      return '<tr>' +
+        '<td class="kuat">' + esc(b.nama) + '</td>' +
+        '<td><span class="lencana lencana-kelas">' + esc(b.kelas) + '</span></td>' +
+        '<td class="ta-kanan kuat">' + b.jumlah + '</td>' +
+        '<td><span class="lencana lencana-merah">⚠ Berisiko</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+}
+
+var pilihBulan = document.getElementById('pilih-bulan');
+if (pilihBulan) pilihBulan.addEventListener('change', renderHalaman);
+</script>
+</body>
+</html>

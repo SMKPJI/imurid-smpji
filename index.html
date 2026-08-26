@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ms" data-tema="gelap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iMurid-SMPJI — Dashboard Utama</title>
+  <meta name="description" content="Analisis Kehadiran Murid — SMK (P) Jalan Ipoh">
+  <!-- Skrip no-flash tema: baca pilihan tema sebelum CSS dimuat -->
+  <script>(function(){try{var t=localStorage.getItem('imurid_tema');if(!t){t='gelap';localStorage.setItem('imurid_tema',t);}document.documentElement.setAttribute('data-tema',t);}catch(e){}})();</script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<main class="container">
+
+  <section class="hero">
+    <p class="hero-sekolah" id="hero-sekolah">SMK (P) Jalan Ipoh</p>
+    <h1 class="hero-tajuk">Analisis Kehadiran Murid</h1>
+    <p class="hero-sub">Pantau rekod tidak hadir murid sepanjang tahun 2026 · <span id="hero-tarikh"></span></p>
+  </section>
+
+  <section class="grid-stat" id="grid-stat" aria-label="Statistik utama"></section>
+
+  <section class="seksyen">
+    <div class="seksyen-kepala">
+      <h2 class="seksyen-tajuk">Jumlah Tidak Hadir Mengikut Bulan</h2>
+      <p class="seksyen-huraian">Januari — Disember 2026 · Keseluruhan sekolah</p>
+    </div>
+    <div class="carta">
+      <div class="carta-bars" id="carta-bars"></div>
+    </div>
+  </section>
+
+  <section class="seksyen">
+    <div class="seksyen-kepala">
+      <h2 class="seksyen-tajuk">Top 10 Murid Paling Tinggi Tidak Hadir</h2>
+      <p class="seksyen-huraian">Disusun mengikut jumlah hari tidak hadir sepanjang tahun</p>
+    </div>
+    <div class="meja-wrap">
+      <table class="meja">
+        <thead>
+          <tr>
+            <th class="ta-tengah">#</th>
+            <th>Nama</th>
+            <th>No. IC</th>
+            <th>Kelas</th>
+            <th class="ta-kanan">Jumlah (hari)</th>
+          </tr>
+        </thead>
+        <tbody id="tubuh-top10"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/data.js"></script>
+<script src="js/common.js"></script>
+<script>
+/* ==========================================================================
+   Logik Halaman: Dashboard Utama
+   ========================================================================== */
+var HARI_SEKOLAH_SEBULAN = 20;
+
+function jumlahPerBulan(kehadiran) {
+  var hasil = {};
+  BULAN.forEach(function (b) { hasil[b.k] = 0; });
+  kehadiran.forEach(function (k) {
+    BULAN.forEach(function (b) {
+      hasil[b.k] += (k.bulan && k.bulan[b.k]) ? (parseInt(k.bulan[b.k], 10) || 0) : 0;
+    });
+  });
+  return hasil;
+}
+
+function renderHalaman() {
+  var tet = getTetapan() || {};
+  var murid = getMurid();
+  var kehadiran = getKehadiran();
+
+  /* --- Hero --- */
+  var heroSekolah = document.getElementById('hero-sekolah');
+  if (heroSekolah && tet.namaSekolah) heroSekolah.textContent = tet.namaSekolah;
+
+  var kini = new Date();
+  var tarikhEl = document.getElementById('hero-tarikh');
+  if (tarikhEl) {
+    tarikhEl.textContent = 'Kemas kini: ' +
+      String(kini.getDate()).padStart(2, '0') + '/' +
+      String(kini.getMonth() + 1).padStart(2, '0') + '/' +
+      kini.getFullYear();
+  }
+
+  /* --- Kiraan statistik --- */
+  var perBulan = jumlahPerBulan(kehadiran);
+  var jumlahKeseluruhan = 0;
+  BULAN.forEach(function (b) { jumlahKeseluruhan += perBulan[b.k]; });
+
+  var bulanTertinggi = BULAN[0].k;
+  var nilaiTertinggi = -1;
+  BULAN.forEach(function (b) {
+    if (perBulan[b.k] > nilaiTertinggi) {
+      nilaiTertinggi = perBulan[b.k];
+      bulanTertinggi = b.k;
+    }
+  });
+
+  var hariSekolah = BULAN.length * HARI_SEKOLAH_SEBULAN;
+  var purataSehari = hariSekolah ? (jumlahKeseluruhan / hariSekolah) : 0;
+
+  /* --- Kad statistik --- */
+  var kad = [
+    { ikon: '👥', nilai: String(murid.length),      label: 'Jumlah Murid',          sub: 'Merentas semua kelas' },
+    { ikon: '📅', nilai: String(jumlahKeseluruhan), label: 'Jumlah Tidak Hadir',    sub: 'Semua bulan (hari)' },
+    { ikon: '🔺', nilai: bulanPenuh(bulanTertinggi), label: 'Bulan Tertinggi',       sub: String(nilaiTertinggi) + ' hari tidak hadir' },
+    { ikon: '📊', nilai: purataSehari.toFixed(2),    label: 'Purata Sehari',         sub: 'Rata-rata sehari persekolahan' }
+  ];
+
+  document.getElementById('grid-stat').innerHTML = kad.map(function (k) {
+    return '<div class="kad-stat">' +
+      '<div class="ikon-stat">' + k.ikon + '</div>' +
+      '<div class="stat-kandungan">' +
+        '<div class="nilai-stat">' + esc(k.nilai) + '</div>' +
+        '<div class="label-stat">' + esc(k.label) + '</div>' +
+        '<div class="sub-stat">' + esc(k.sub) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  /* --- Carta bar 12 bulan --- */
+  var maks = 1;
+  BULAN.forEach(function (b) { if (perBulan[b.k] > maks) maks = perBulan[b.k]; });
+
+  document.getElementById('carta-bars').innerHTML = BULAN.map(function (b) {
+    var h = Math.round((perBulan[b.k] / maks) * 100);
+    var kosong = perBulan[b.k] === 0 ? ' bar-kosong' : '';
+    return '<div class="bar-wrap">' +
+      '<div class="bar' + kosong + '" style="height:' + h + '%" title="' + esc(bulanPenuh(b.k)) + ': ' + perBulan[b.k] + ' hari">' +
+        '<span class="bar-value">' + perBulan[b.k] + '</span>' +
+        '<span class="bar-tip">' + esc(bulanPenuh(b.k)) + ' — ' + perBulan[b.k] + ' hari</span>' +
+      '</div>' +
+      '<span class="bar-label">' + bulanPendek(b.k) + '</span>' +
+    '</div>';
+  }).join('');
+
+  /* --- Top 10 murid --- */
+  var baris = kehadiran.map(function (k) {
+    var m = null;
+    var icK = String(k.ic || '').replace(/[^0-9]/g, '');
+    for (var i = 0; i < murid.length; i++) {
+      if (String(murid[i].ic || '').replace(/[^0-9]/g, '') === icK) { m = murid[i]; break; }
+    }
+    return {
+      nama: k.nama || (m ? m.nama : ''),
+      ic: k.ic || (m ? m.ic : ''),
+      kelas: m ? m.kelas : '—',
+      jumlah: parseInt(k.jumlah, 10) || 0
+    };
+  }).sort(function (a, b) { return b.jumlah - a.jumlah; }).slice(0, 10);
+
+  var pingat = ['🥇', '🥈', '🥉'];
+  document.getElementById('tubuh-top10').innerHTML = baris.map(function (b, i) {
+    var pangkat = pingat[i] ? pingat[i] + ' ' + (i + 1) : String(i + 1);
+    return '<tr>' +
+      '<td class="ta-tengah kuat">' + pangkat + '</td>' +
+      '<td>' + esc(b.nama) + '</td>' +
+      '<td class="mono">' + esc(formatIC(b.ic)) + '</td>' +
+      '<td><span class="lencana lencana-kelas">' + esc(b.kelas) + '</span></td>' +
+      '<td class="ta-kanan kuat">' + b.jumlah + '</td>' +
+    '</tr>';
+  }).join('');
+}
+</script>
+</body>
+</html>

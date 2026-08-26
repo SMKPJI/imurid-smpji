@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ms" data-tema="gelap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iMurid-SMPJI — Admin</title>
+  <meta name="description" content="Panel pentadbir iMurid-SMPJI — SMK (P) Jalan Ipoh">
+  <!-- Skrip no-flash tema -->
+  <script>(function(){try{var t=localStorage.getItem('imurid_tema');if(!t){t='gelap';localStorage.setItem('imurid_tema',t);}document.documentElement.setAttribute('data-tema',t);}catch(e){}})();</script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<main class="container">
+
+  <!-- ============ GERBANG KATA LALUAN ============ -->
+  <section class="gerbang" id="gerbang">
+    <div class="kad-gerbang">
+      <div class="ikon-gerbang">🔒</div>
+      <h2>Kawasan Pentadbir</h2>
+      <p>Masukkan kata laluan untuk meneruskan.</p>
+      <form id="borang-gerbang">
+        <div class="kumpulan-input">
+          <input type="password" id="input-laluan" placeholder="Kata laluan" autocomplete="current-password" aria-label="Kata laluan">
+        </div>
+        <button type="submit" class="butang butang-utama lebar-penuh">Masuk</button>
+        <p class="ralat-laluan" id="ralat-laluan"></p>
+        <p class="gerbang-hint">Kata laluan lalai (demo): admin123</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ KANDUNGAN ADMIN ============ -->
+  <div id="kandungan-admin" class="hidden">
+
+    <section class="hero hero-ringkas">
+      <p class="hero-sekolah">SMK (P) Jalan Ipoh</p>
+      <h1 class="hero-tajuk">Panel Pentadbir</h1>
+      <p class="hero-sub">Muat naik laporan, status import dan semakan data kehadiran</p>
+    </section>
+
+    <section class="seksyen">
+      <div class="seksyen-kepala seksyen-kepala-baris">
+        <div>
+          <h2 class="seksyen-tajuk">Kawalan Pentadbir</h2>
+          <p class="seksyen-huraian" id="huraian-versi">Versi data: —</p>
+        </div>
+        <button type="button" class="butang butang-sekunder" id="butang-logout">🚪 Log Keluar</button>
+      </div>
+
+      <div class="tab-nav" role="tablist">
+        <button type="button" class="tab-btn aktif" data-tab="tab-upload" role="tab">📤 Muat Naik Laporan</button>
+        <button type="button" class="tab-btn" data-tab="tab-status" role="tab">📋 Status Import</button>
+        <button type="button" class="tab-btn" data-tab="tab-semakan" role="tab">🔍 Semakan Data</button>
+      </div>
+
+      <!-- Tab 1: Muat Naik Laporan -->
+      <div class="tab-panel aktif" id="tab-upload">
+        <form id="borang-upload">
+          <div class="grid-dua">
+            <div class="kumpulan-input">
+              <label for="pilih-bulan-upload">Pilih Bulan</label>
+              <select id="pilih-bulan-upload">
+                <option value="Jan 2026">Jan 2026</option>
+                <option value="Feb 2026">Feb 2026</option>
+                <option value="Mac 2026">Mac 2026</option>
+                <option value="Apr 2026">Apr 2026</option>
+                <option value="Mei 2026">Mei 2026</option>
+                <option value="Jun 2026">Jun 2026</option>
+                <option value="Jul 2026">Jul 2026</option>
+                <option value="Ogs 2026">Ogs 2026</option>
+                <option value="Sep 2026">Sep 2026</option>
+                <option value="Okt 2026">Okt 2026</option>
+                <option value="Nov 2026">Nov 2026</option>
+                <option value="Dis 2026">Dis 2026</option>
+              </select>
+            </div>
+            <div class="kumpulan-input">
+              <label for="input-fail">Fail Laporan (PDF)</label>
+              <label class="input-fail" for="input-fail">
+                <span class="input-fail-ikon">📄</span>
+                <span class="input-fail-teks" id="teks-fail">Klik untuk pilih fail PDF…</span>
+              </label>
+              <input type="file" id="input-fail" accept=".pdf,application/pdf" class="hidden" aria-label="Pilih fail PDF">
+            </div>
+          </div>
+          <button type="submit" class="butang butang-utama" id="butang-upload">📤 Muat Naik</button>
+          <div class="kawasan-status" id="kawasan-status-upload"></div>
+        </form>
+      </div>
+
+      <!-- Tab 2: Status Import -->
+      <div class="tab-panel" id="tab-status">
+        <div class="meja-wrap">
+          <table class="meja">
+            <thead>
+              <tr>
+                <th>Bulan</th>
+                <th>Status</th>
+                <th>Tarikh</th>
+                <th>Fail</th>
+              </tr>
+            </thead>
+            <tbody id="tubuh-status"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 3: Semakan Data -->
+      <div class="tab-panel" id="tab-semakan">
+        <div class="meja-wrap">
+          <table class="meja">
+            <thead>
+              <tr>
+                <th>Bulan</th>
+                <th class="ta-tengah">Jumlah Rekod</th>
+                <th class="ta-kanan">Jumlah Tidak Hadir</th>
+              </tr>
+            </thead>
+            <tbody id="tubuh-semakan"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+</main>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/data.js"></script>
+<script src="js/common.js"></script>
+<script>
+/* ==========================================================================
+   Logik Halaman: Admin
+   ========================================================================== */
+
+function badgeStatus(s) {
+  s = String(s || '').toUpperCase();
+  var cls = 'lencana-biru';
+  if (s === 'SELESAI') cls = 'lencana-hijau';
+  else if (s === 'MENUNGGU') cls = 'lencana-kuning';
+  else if (s === 'GAGAL') cls = 'lencana-merah';
+  return '<span class="lencana ' + cls + '">' + esc(s || '—') + '</span>';
+}
+
+function renderStatus() {
+  var tb = document.getElementById('tubuh-status');
+  if (!tb) return;
+  var arkib = getArkib();
+  if (!arkib.length) {
+    tb.innerHTML = '<tr><td colspan="4" class="ta-tengah kosong">Tiada rekod import lagi.</td></tr>';
+    return;
+  }
+  tb.innerHTML = arkib.map(function (a) {
+    var failHtml = '—';
+    if (a.FailID) {
+      if (/^https?:/i.test(a.FailID)) {
+        failHtml = '<a href="' + esc(a.FailID) + '" target="_blank" rel="noopener">📎 ' + esc(a.FailID) + '</a>';
+      } else {
+        failHtml = '<span class="mono">📎 ' + esc(a.FailID) + '</span>';
+      }
+    }
+    return '<tr>' +
+      '<td class="kuat">' + esc(a.Bulan || '—') + '</td>' +
+      '<td>' + badgeStatus(a.Status) + '</td>' +
+      '<td class="mono">' + esc(a.Tarikh || '—') + '</td>' +
+      '<td>' + failHtml + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderSemakan() {
+  var tb = document.getElementById('tubuh-semakan');
+  if (!tb) return;
+  var kehadiran = getKehadiran();
+  if (!kehadiran.length) {
+    tb.innerHTML = '<tr><td colspan="3" class="ta-tengah kosong">Tiada data kehadiran.</td></tr>';
+    return;
+  }
+  tb.innerHTML = BULAN.map(function (b) {
+    var jum = 0;
+    kehadiran.forEach(function (k) {
+      jum += parseInt((k.bulan && k.bulan[b.k]) || 0, 10) || 0;
+    });
+    return '<tr>' +
+      '<td class="kuat">' + esc(b.n) + ' 2026</td>' +
+      '<td class="ta-tengah">' + kehadiran.length + '</td>' +
+      '<td class="ta-kanan kuat">' + jum + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderHalaman() {
+  renderStatus();
+  renderSemakan();
+  var v = document.getElementById('huraian-versi');
+  if (v) {
+    var versi = 'Versi data: ' + (localStorage.getItem('imurid_versi') || '—');
+    versi += ' · ' + (window.API_URL ? 'API: bersambung' : 'API: belum dikonfigurasi (mod demo)');
+    v.textContent = versi;
+  }
+}
+
+/* ---------- Gerbang kata laluan ---------- */
+function periksaAuth() {
+  var masuk = false;
+  try { masuk = sessionStorage.getItem('imurid_admin') === '1'; } catch (e) { /* langkau */ }
+  var gerbang = document.getElementById('gerbang');
+  var kandungan = document.getElementById('kandungan-admin');
+  if (masuk) {
+    gerbang.classList.add('hidden');
+    kandungan.classList.remove('hidden');
+  } else {
+    gerbang.classList.remove('hidden');
+    kandungan.classList.add('hidden');
+  }
+  return masuk;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  /* --- Semak sesi (refresh dengan sesi aktif terus masuk) --- */
+  periksaAuth();
+
+  /* --- Log masuk --- */
+  var borangGerbang = document.getElementById('borang-gerbang');
+  borangGerbang.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var nilai = document.getElementById('input-laluan').value;
+    var tet = getTetapan() || {};
+    var ralatEl = document.getElementById('ralat-laluan');
+    if (nilai === tet.kataLaluanAdmin) {
+      try { sessionStorage.setItem('imurid_admin', '1'); } catch (err) { /* langkau */ }
+      ralatEl.textContent = '';
+      document.getElementById('input-laluan').value = '';
+      periksaAuth();
+    } else {
+      ralatEl.textContent = 'Kata laluan salah. Sila cuba lagi.';
+    }
+  });
+
+  /* --- Tab --- */
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  tabBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabBtns.forEach(function (b) { b.classList.remove('aktif'); });
+      btn.classList.add('aktif');
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('aktif'); });
+      var panel = document.getElementById(btn.dataset.tab);
+      if (panel) panel.classList.add('aktif');
+    });
+  });
+
+  /* --- Papar nama fail dipilih --- */
+  var inputFail = document.getElementById('input-fail');
+  inputFail.addEventListener('change', function () {
+    var teks = document.getElementById('teks-fail');
+    if (teks) {
+      teks.textContent = (inputFail.files && inputFail.files.length)
+        ? inputFail.files[0].name
+        : 'Klik untuk pilih fail PDF…';
+    }
+  });
+
+  /* --- Muat naik laporan --- */
+  var borangUpload = document.getElementById('borang-upload');
+  borangUpload.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var bulan = document.getElementById('pilih-bulan-upload').value;
+    var fail = inputFail.files && inputFail.files[0];
+    var kawasan = document.getElementById('kawasan-status-upload');
+    var butang = document.getElementById('butang-upload');
+
+    if (!fail) {
+      kawasan.innerHTML = '<div class="notis notis-ralat">Sila pilih fail PDF terlebih dahulu.</div>';
+      return;
+    }
+    if (!/\.pdf$/i.test(fail.name)) {
+      kawasan.innerHTML = '<div class="notis notis-ralat">Fail mestilah berformat PDF.</div>';
+      return;
+    }
+
+    butang.disabled = true;
+    kawasan.innerHTML = '<div class="notis notis-info"><span class="spinner"></span> Sedang memuat naik ' + esc(bulan) + '…</div>';
+
+    if (!window.API_URL) {
+      /* Mod demo — API belum dikonfigurasi: simpan arkib secara tempatan */
+      setTimeout(function () {
+        try {
+          var arkib = getArkib();
+          arkib.unshift({ Bulan: bulan, Status: 'MENUNGGU', Tarikh: '', FailID: fail.name });
+          simpanArkib(arkib);
+        } catch (err) { /* langkau */ }
+        kawasan.innerHTML =
+          '<div class="notis notis-jaya">✅ Laporan <strong>' + esc(bulan) + '</strong> diterima (Mod Demo).<br>' +
+          '<small>API belum dikonfigurasi — rekod disimpan dalam arkib tempatan.</small></div>';
+        butang.disabled = false;
+        inputFail.value = '';
+        document.getElementById('teks-fail').textContent = 'Klik untuk pilih fail PDF…';
+        renderStatus();
+      }, 900);
+      return;
+    }
+
+    uploadLaporan(bulan, fail)
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json().catch(function () { return {}; });
+      })
+      .then(function () {
+        kawasan.innerHTML = '<div class="notis notis-jaya">✅ Laporan <strong>' + esc(bulan) + '</strong> berjaya dimuat naik ke pelayan.</div>';
+        butang.disabled = false;
+        inputFail.value = '';
+        document.getElementById('teks-fail').textContent = 'Klik untuk pilih fail PDF…';
+        syncDataFromApi(); /* muat semula arkib daripada pelayan */
+      })
+      .catch(function (err) {
+        kawasan.innerHTML =
+          '<div class="notis notis-ralat">❌ Ralat semasa memuat naik: ' +
+          esc(err && err.message ? err.message : 'Ralat tidak diketahui') + '. Sila cuba sebentar lagi.</div>';
+        butang.disabled = false;
+      });
+  });
+
+  /* --- Log keluar --- */
+  document.getElementById('butang-logout').addEventListener('click', function () {
+    try { sessionStorage.removeItem('imurid_admin'); } catch (err) { /* langkau */ }
+    location.reload();
+  });
+});
+</script>
+</body>
+</html>

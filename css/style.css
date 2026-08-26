@@ -1,0 +1,1210 @@
+/* ==========================================================================
+   iMurid-SMPJI — Analisis Kehadiran Murid
+   SMK (P) Jalan Ipoh · Template boleh jual (sellable template)
+   --------------------------------------------------------------------------
+   Tema gelap (lalai) + tema cerah · Pure CSS · Tiada library luaran
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. PEMBOLEHUBAH TEMA
+   -------------------------------------------------------------------------- */
+:root {
+  /* Tema gelap (lalai) */
+  --bg: #0b1220;
+  --bg-lapisan: #0f172a;
+  --kad: #1e293b;
+  --kad-hover: #243349;
+  --teks: #e2e8f0;
+  --teks-muted: #94a3b8;
+  --teks-samarsamar: #64748b;
+  --sempadan: #334155;
+  --akcent: #3b82f6;
+  --akcent-hover: #2563eb;
+  --akcent-lembut: rgba(59, 130, 246, 0.16);
+  --akcent-teks: #ffffff;
+  --berjaya: #22c55e;
+  --amaran: #eab308;
+  --bahaya: #ef4444;
+  --latar-baris: #16213a;
+  --bayang: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --bayang-kad: 0 2px 10px rgba(0, 0, 0, 0.28);
+  --jejari: 14px;
+  --font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+html[data-tema="cerah"] {
+  /* Tema cerah */
+  --bg: #f1f5f9;
+  --bg-lapisan: #e2e8f0;
+  --kad: #ffffff;
+  --kad-hover: #f1f5f9;
+  --teks: #0f172a;
+  --teks-muted: #475569;
+  --teks-samarsamar: #94a3b8;
+  --sempadan: #e2e8f0;
+  --akcent: #3b82f6;
+  --akcent-hover: #2563eb;
+  --akcent-lembut: rgba(59, 130, 246, 0.12);
+  --akcent-teks: #ffffff;
+  --berjaya: #16a34a;
+  --amaran: #ca8a04;
+  --bahaya: #dc2626;
+  --latar-baris: #f8fafc;
+  --bayang: 0 8px 28px rgba(15, 23, 42, 0.12);
+  --bayang-kad: 0 2px 8px rgba(15, 23, 42, 0.07);
+}
+
+/* --------------------------------------------------------------------------
+   2. RESET & ASAS
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--teks);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: var(--akcent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+}
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+main.container {
+  min-height: 60vh;
+}
+
+::selection {
+  background: var(--akcent);
+  color: #fff;
+}
+
+/* Skrol bar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sempadan);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--teks-samarsamar);
+}
+
+/* Utiliti */
+.mono {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  letter-spacing: 0.02em;
+}
+.ta-kanan { text-align: right; }
+.ta-tengah { text-align: center; }
+.kuat { font-weight: 700; }
+.teks-redup { color: var(--teks-samarsamar); }
+
+.hidden,
+[hidden] {
+  display: none !important;
+}
+
+/* Animasi */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes naik {
+  from { height: 0; }
+}
+@keyframes melebar {
+  from { width: 0; }
+}
+@keyframes putar {
+  to { transform: rotate(360deg); }
+}
+
+/* --------------------------------------------------------------------------
+   3. HEADER & NAVIGASI
+   -------------------------------------------------------------------------- */
+.header {
+  background: var(--bg-lapisan);
+  border-bottom: 1px solid var(--sempadan);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.header-dalam {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.jenama {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--teks);
+  text-decoration: none;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.jenama:hover {
+  text-decoration: none;
+}
+
+.logo-emoji {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--akcent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px var(--akcent-lembut);
+}
+
+.logo-img {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.jenama-teks {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.jenama-sistem {
+  font-weight: 800;
+  font-size: 1.02rem;
+  white-space: nowrap;
+}
+
+.jenama-sekolah {
+  font-size: 0.72rem;
+  color: var(--teks-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  padding: 8px 14px;
+  border-radius: 9px;
+  color: var(--teks-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: var(--teks);
+  background: var(--kad);
+  text-decoration: none;
+}
+
+.nav-link-aktif {
+  background: var(--akcent);
+  color: #fff;
+  box-shadow: 0 3px 10px var(--akcent-lembut);
+}
+
+.nav-link-aktif:hover {
+  background: var(--akcent-hover);
+  color: #fff;
+}
+
+.butang-tema {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--sempadan);
+  background: var(--kad);
+  color: var(--teks);
+  font-size: 1.05rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.2s, transform 0.15s, background 0.2s;
+}
+
+.butang-tema:hover {
+  border-color: var(--akcent);
+  transform: translateY(-1px);
+}
+
+/* --------------------------------------------------------------------------
+   4. HERO
+   -------------------------------------------------------------------------- */
+.hero {
+  padding: 46px 0 34px;
+  text-align: center;
+  animation: fadeIn 0.4s ease;
+}
+
+.hero-ringkas {
+  padding: 34px 0 26px;
+}
+
+.hero-sekolah {
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: var(--akcent-lembut);
+  color: var(--akcent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.hero-tajuk {
+  margin: 0 0 10px;
+  font-size: clamp(1.6rem, 4.5vw, 2.45rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.hero-sub {
+  margin: 0 auto;
+  max-width: 640px;
+  color: var(--teks-muted);
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
+}
+
+/* --------------------------------------------------------------------------
+   5. KAD STATISTIK
+   -------------------------------------------------------------------------- */
+.grid-stat {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.kad-stat {
+  background: var(--kad);
+  border: 1px solid var(--sempadan);
+  border-radius: var(--jejari);
+  padding: 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  box-shadow: var(--bayang-kad);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  animation: fadeIn 0.4s ease;
+}
+
+.kad-stat:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--bayang);
+  border-color: var(--akcent);
+}
+
+.ikon-stat {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--akcent-lembut);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.stat-kandungan {
+  min-width: 0;
+}
+
+.nilai-stat {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+.label-stat {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--teks-muted);
+}
+
+.sub-stat {
+  font-size: 0.74rem;
+  color: var(--teks-samarsamar);
+  margin-top: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   6. SEKSYEN (KAD KANDUNGAN)
+   -------------------------------------------------------------------------- */
+.seksyen {
+  background: var(--kad);
+  border: 1px solid var(--sempadan);
+  border-radius: var(--jejari);
+  padding: 22px;
+  margin-bottom: 26px;
+  box-shadow: var(--bayang-kad);
+  animation: fadeIn 0.4s ease;
+}
+
+.seksyen-kepala {
+  margin-bottom: 18px;
+}
+
+.seksyen-kepala-baris {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.seksyen-tajuk {
+  margin: 0 0 4px;
+  font-size: 1.18rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.seksyen-huraian {
+  margin: 0;
+  color: var(--teks-muted);
+  font-size: 0.85rem;
+}
+
+/* --------------------------------------------------------------------------
+   7. CARTA BAR MENEGAK (Dashboard & Murid)
+   -------------------------------------------------------------------------- */
+.carta {
+  padding: 6px 4px 4px;
+}
+
+.carta-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 240px;
+  padding: 52px 6px 0;
+  border-bottom: 2px solid var(--sempadan);
+}
+
+.bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+.bar {
+  position: relative;
+  width: 100%;
+  max-width: 46px;
+  background: var(--akcent);
+  border-radius: 8px 8px 0 0;
+  min-height: 3px;
+  display: flex;
+  justify-content: center;
+  cursor: default;
+  animation: naik 0.7s ease;
+  transition: background 0.2s, filter 0.2s;
+}
+
+.bar:hover {
+  background: var(--akcent-hover);
+  filter: brightness(1.1);
+}
+
+.bar-kosong {
+  background: var(--sempadan);
+  opacity: 0.5;
+}
+
+.bar-value {
+  position: absolute;
+  top: -24px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--teks);
+}
+
+.bar-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--teks);
+  color: var(--bg);
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 5;
+  box-shadow: var(--bayang);
+}
+
+.bar:hover .bar-tip {
+  opacity: 1;
+}
+
+.bar-label {
+  margin-top: 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--teks-muted);
+}
+
+/* Carta mini (halaman carian murid) */
+.carta-mini .carta-bars {
+  height: 120px;
+  padding-top: 26px;
+  gap: 6px;
+}
+
+.carta-mini .bar {
+  max-width: 26px;
+}
+
+.carta-mini .bar-value {
+  top: -18px;
+  font-size: 0.65rem;
+}
+
+.carta-mini .bar-label {
+  font-size: 0.6rem;
+  margin-top: 5px;
+}
+
+.carta-mini .bar-tip {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   8. CARTA BAR MENGUFUK (Perbandingan Kelas)
+   -------------------------------------------------------------------------- */
+.palang-sel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 190px;
+}
+
+.palang-luar {
+  flex: 1;
+  background: var(--latar-baris);
+  border-radius: 999px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.palang-dalam {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--akcent);
+  min-width: 3px;
+  animation: melebar 0.7s ease;
+  transition: background 0.2s;
+}
+
+.palang-dalam:hover {
+  background: var(--akcent-hover);
+}
+
+.palang-nilai {
+  font-weight: 700;
+  font-size: 0.85rem;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* --------------------------------------------------------------------------
+   9. JADUAL
+   -------------------------------------------------------------------------- */
+.meja-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--sempadan);
+  border-radius: 12px;
+  background: var(--kad);
+}
+
+.meja {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.meja th {
+  text-align: left;
+  padding: 12px 14px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--teks-muted);
+  background: var(--bg-lapisan);
+  border-bottom: 1px solid var(--sempadan);
+  white-space: nowrap;
+}
+
+.meja td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--sempadan);
+  vertical-align: middle;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.meja tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.meja tbody tr:nth-child(even) {
+  background: var(--latar-baris);
+}
+
+.meja tbody tr:hover {
+  background: var(--kad-hover);
+}
+
+.meja .kosong {
+  padding: 28px 16px !important;
+  color: var(--teks-samarsamar);
+  font-style: italic;
+}
+
+/* --------------------------------------------------------------------------
+   10. LENCANA (BADGE)
+   -------------------------------------------------------------------------- */
+.lencana {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.lencana-kelas {
+  background: var(--akcent-lembut);
+  color: var(--akcent);
+}
+
+.lencana-biru {
+  background: var(--akcent-lembut);
+  color: var(--akcent);
+}
+
+.lencana-hijau {
+  background: rgba(34, 197, 94, 0.14);
+  color: var(--berjaya);
+}
+
+.lencana-kuning {
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--amaran);
+}
+
+.lencana-merah {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--bahaya);
+}
+
+/* --------------------------------------------------------------------------
+   11. BORANG, INPUT & BUTANG
+   -------------------------------------------------------------------------- */
+.kumpulan-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.kumpulan-input label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--teks-muted);
+}
+
+.kumpulan-input input[type="text"],
+.kumpulan-input input[type="password"],
+.kumpulan-input input[type="search"],
+.kumpulan-input select {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--sempadan);
+  background: var(--bg-lapisan);
+  color: var(--teks);
+  font: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.kumpulan-input input:focus,
+.kumpulan-input select:focus {
+  outline: none;
+  border-color: var(--akcent);
+  box-shadow: 0 0 0 3px var(--akcent-lembut);
+}
+
+.kumpulan-input select {
+  cursor: pointer;
+}
+
+.kumpulan-input select option {
+  background: var(--kad);
+  color: var(--teks);
+}
+
+.kumpulan-input-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.kumpulan-input-inline select {
+  width: auto;
+  min-width: 160px;
+}
+
+.kumpulan-input-flex {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.kumpulan-input-flex input {
+  flex: 1;
+}
+
+.grid-dua {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.butang {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 10px;
+  border: none;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.butang:hover {
+  transform: translateY(-1px);
+}
+
+.butang:active {
+  transform: translateY(0);
+}
+
+.butang:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.butang-utama {
+  background: var(--akcent);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--akcent-lembut);
+}
+
+.butang-utama:hover {
+  background: var(--akcent-hover);
+}
+
+.butang-sekunder {
+  background: var(--bg-lapisan);
+  color: var(--teks);
+  border: 1px solid var(--sempadan);
+}
+
+.butang-sekunder:hover {
+  background: var(--kad-hover);
+  border-color: var(--akcent);
+}
+
+.lebar-penuh {
+  width: 100%;
+}
+
+/* Input fail (muat naik laporan) */
+.input-fail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1.5px dashed var(--sempadan);
+  border-radius: 10px;
+  background: var(--bg-lapisan);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.input-fail:hover {
+  border-color: var(--akcent);
+  background: var(--kad-hover);
+}
+
+.input-fail-ikon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.input-fail-teks {
+  font-size: 0.85rem;
+  color: var(--teks-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   12. KAD CARIAN (Halaman Cari Murid)
+   -------------------------------------------------------------------------- */
+.kad-cari {
+  background: var(--kad);
+  border: 1px solid var(--sempadan);
+  border-radius: var(--jejari);
+  padding: 20px;
+  box-shadow: var(--bayang-kad);
+}
+
+.bantuan-cari {
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  color: var(--teks-samarsamar);
+}
+
+.bantuan-chip {
+  background: var(--bg-lapisan);
+  border: 1px solid var(--sempadan);
+  color: var(--teks-muted);
+  border-radius: 999px;
+  padding: 4px 13px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.bantuan-chip:hover {
+  border-color: var(--akcent);
+  color: var(--akcent);
+}
+
+/* --------------------------------------------------------------------------
+   13. KAD PROFIL MURID
+   -------------------------------------------------------------------------- */
+.kad-profil {
+  background: var(--kad);
+  border: 1px solid var(--sempadan);
+  border-radius: var(--jejari);
+  padding: 20px;
+  margin-top: 18px;
+  box-shadow: var(--bayang-kad);
+  animation: fadeIn 0.3s ease;
+}
+
+.profil-atas {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--akcent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px var(--akcent-lembut);
+}
+
+.profil-maklumat {
+  min-width: 0;
+}
+
+.profil-nama {
+  font-size: 1.15rem;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.profil-ic {
+  color: var(--teks-muted);
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+}
+
+.profil-trend {
+  margin-bottom: 8px;
+}
+
+.profil-trend h4 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   14. NOTIS & SPINNER
+   -------------------------------------------------------------------------- */
+.notis {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  border: 1px solid;
+  margin: 12px 0;
+}
+
+.notis-info {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.notis-jaya {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.notis-amaran {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.4);
+}
+
+.notis-ralat {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.spinner {
+  width: 17px;
+  height: 17px;
+  border: 3px solid var(--akcent-lembut);
+  border-top-color: var(--akcent);
+  border-radius: 50%;
+  display: inline-block;
+  vertical-align: -3px;
+  animation: putar 0.7s linear infinite;
+}
+
+.kawasan-status {
+  margin-top: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   15. TAB (Halaman Admin)
+   -------------------------------------------------------------------------- */
+.tab-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 18px;
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--sempadan);
+  background: var(--bg-lapisan);
+  color: var(--teks-muted);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: var(--teks);
+  border-color: var(--akcent);
+}
+
+.tab-btn.aktif {
+  background: var(--akcent);
+  border-color: var(--akcent);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--akcent-lembut);
+}
+
+.tab-panel {
+  display: none;
+  padding-top: 6px;
+}
+
+.tab-panel.aktif {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+/* --------------------------------------------------------------------------
+   16. GERBANG (KATA LALUAN ADMIN)
+   -------------------------------------------------------------------------- */
+.gerbang {
+  display: flex;
+  justify-content: center;
+  padding: 46px 16px;
+}
+
+.kad-gerbang {
+  background: var(--kad);
+  border: 1px solid var(--sempadan);
+  border-radius: 18px;
+  padding: 32px 28px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--bayang);
+  animation: fadeIn 0.35s ease;
+}
+
+.ikon-gerbang {
+  font-size: 2.3rem;
+  margin-bottom: 8px;
+}
+
+.kad-gerbang h2 {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+}
+
+.kad-gerbang p {
+  margin: 0 0 18px;
+  color: var(--teks-muted);
+  font-size: 0.88rem;
+}
+
+.gerbang-hint {
+  margin-top: 14px !important;
+  font-size: 0.75rem !important;
+  color: var(--teks-samarsamar) !important;
+  margin-bottom: 0 !important;
+}
+
+.ralat-laluan {
+  margin: 10px 0 0;
+  color: var(--bahaya);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   17. FOOTER
+   -------------------------------------------------------------------------- */
+.footer {
+  margin-top: 56px;
+  padding: 28px 0 34px;
+  border-top: 1px solid var(--sempadan);
+  background: var(--bg-lapisan);
+  text-align: center;
+}
+
+.footer-utama {
+  margin: 0 0 6px;
+  font-size: 0.88rem;
+}
+
+.footer-muted {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--teks-samarsamar);
+}
+
+/* --------------------------------------------------------------------------
+   18. RESPONSIF (MOBILE-FIRST)
+   -------------------------------------------------------------------------- */
+@media (max-width: 920px) {
+  .grid-stat {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 0 14px;
+  }
+
+  .grid-stat {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .header-dalam {
+    gap: 10px;
+  }
+
+  .nav {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .seksyen {
+    padding: 16px;
+  }
+
+  .seksyen-kepala-baris {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .carta-bars {
+    gap: 5px;
+    height: 210px;
+  }
+
+  .bar-value {
+    font-size: 0.7rem;
+    top: -20px;
+  }
+
+  .grid-dua {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .kumpulan-input-flex {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bantuan-chip {
+    margin-left: 0;
+    margin-right: 6px;
+    margin-top: 4px;
+  }
+
+  .hero {
+    padding: 34px 0 26px;
+  }
+
+  .tab-btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .jenama-sekolah {
+    display: none;
+  }
+}
+
+/* Kurangkan animasi jika pengguna minta */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

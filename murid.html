@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ms" data-tema="gelap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iMurid-SMPJI — Cari Murid</title>
+  <meta name="description" content="Carian murid dan trend kehadiran — SMK (P) Jalan Ipoh">
+  <!-- Skrip no-flash tema -->
+  <script>(function(){try{var t=localStorage.getItem('imurid_tema');if(!t){t='gelap';localStorage.setItem('imurid_tema',t);}document.documentElement.setAttribute('data-tema',t);}catch(e){}})();</script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<main class="container">
+
+  <section class="hero hero-ringkas">
+    <p class="hero-sekolah" id="hero-sekolah">SMK (P) Jalan Ipoh</p>
+    <h1 class="hero-tajuk">Carian Murid</h1>
+    <p class="hero-sub">Cari murid mengikut nama atau nombor IC untuk melihat trend kehadiran bulanan</p>
+  </section>
+
+  <section class="seksyen">
+    <div class="kad-cari">
+      <form id="borang-cari" class="borang-cari" autocomplete="off">
+        <div class="kumpulan-input kumpulan-input-flex">
+          <input type="search" id="input-cari" placeholder="Nama murid atau nombor IC (cth: 130101140001)" aria-label="Nama atau nombor IC">
+          <button type="submit" class="butang butang-utama">Cari</button>
+        </div>
+        <p class="bantuan-cari">💡 Contoh: <button type="button" class="bantuan-chip" data-q="nur">nur</button><button type="button" class="bantuan-chip" data-q="130305041234">130305041234</button></p>
+      </form>
+      <div id="kawasan-hasil"></div>
+    </div>
+  </section>
+
+</main>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/data.js"></script>
+<script src="js/common.js"></script>
+<script>
+/* ==========================================================================
+   Logik Halaman: Carian Murid
+   ========================================================================== */
+var kawasanHasil = document.getElementById('kawasan-hasil');
+
+function renderHalaman() {
+  /* Ralat API: API dikonfigurasi tetapi tiada data diterima */
+  if (window.API_URL && getMurid().length === 0) {
+    kawasanHasil.innerHTML =
+      '<div class="notis notis-ralat">❌ Ralat API: data tidak dapat dimuatkan daripada pelayan. Sila cuba sebentar lagi.</div>';
+    return;
+  }
+}
+
+function kadProfil(m, kh) {
+  /* Data bulanan */
+  var bulan = [];
+  var jumlah = 0;
+  var maks = 1;
+  BULAN.forEach(function (b) {
+    var v = kh && kh.bulan ? (parseInt(kh.bulan[b.k], 10) || 0) : 0;
+    bulan.push({ k: b.k, v: v });
+    jumlah += v;
+    if (v > maks) maks = v;
+  });
+  if (kh && typeof kh.jumlah === 'number' && kh.jumlah > jumlah) jumlah = kh.jumlah;
+
+  /* Bulan paling tinggi */
+  var tertinggi = null, nTertinggi = -1;
+  bulan.forEach(function (x) {
+    if (x.v > nTertinggi) { nTertinggi = x.v; tertinggi = x.k; }
+  });
+
+  /* Bar mini */
+  var bars = bulan.map(function (x) {
+    var h = Math.round((x.v / maks) * 100);
+    var kosong = x.v === 0 ? ' bar-kosong' : '';
+    return '<div class="bar-wrap">' +
+      '<div class="bar' + kosong + '" style="height:' + h + '%" title="' + esc(bulanPenuh(x.k)) + ': ' + x.v + ' hari">' +
+        '<span class="bar-value">' + x.v + '</span>' +
+      '</div>' +
+      '<span class="bar-label">' + bulanPendek(x.k) + '</span>' +
+    '</div>';
+  }).join('');
+
+  /* Insight */
+  var insight = '';
+  if (jumlah === 0) {
+    insight = '<div class="notis notis-jaya">🎉 Tiada rekod tidak hadir sepanjang tahun 2026. Tahniah!</div>';
+  } else {
+    insight = '<div class="notis notis-info">' +
+      '<strong>Bulan paling tinggi:</strong> ' + esc(bulanPenuh(tertinggi)) + ' (' + nTertinggi + ' hari)' +
+      ' &nbsp;·&nbsp; <strong>Jumlah setahun:</strong> ' + jumlah + ' hari' +
+      (jumlah > 10 ? ' &nbsp;·&nbsp; <span class="lencana lencana-merah">⚠ Berisiko</span>' : '') +
+      '</div>';
+  }
+
+  return '<div class="kad-profil">' +
+    '<div class="profil-atas">' +
+      '<div class="avatar">' + esc(inisial(m.nama)) + '</div>' +
+      '<div class="profil-maklumat">' +
+        '<h3 class="profil-nama">' + esc(m.nama) + '</h3>' +
+        '<p class="profil-ic mono">' + esc(formatIC(m.ic)) + '</p>' +
+        '<p style="margin:0">' +
+          '<span class="lencana lencana-kelas">' + esc(m.kelas || 'Tiada Kelas') + '</span>' +
+          ' <span class="lencana lencana-biru">Jumlah: ' + jumlah + ' hari</span>' +
+        '</p>' +
+      '</div>' +
+    '</div>' +
+    '<div class="profil-trend">' +
+      '<h4>Trend Kehadiran Bulanan (2026)</h4>' +
+      '<div class="carta carta-mini"><div class="carta-bars">' + bars + '</div></div>' +
+    '</div>' +
+    insight +
+  '</div>';
+}
+
+function laksanaCarian() {
+  var q = document.getElementById('input-cari').value;
+  var digit = q.replace(/[^0-9]/g, '');
+  var nampakIC = /^[0-9- ]+$/.test(q.trim()) && digit.length >= 6;
+
+  /* Kekosongan */
+  if (q.trim().length < 3) {
+    kawasanHasil.innerHTML =
+      '<div class="notis notis-ralat">Sila masukkan nama atau nombor IC (sekurang-kurangnya 3 aksara).</div>';
+    return;
+  }
+
+  /* Format IC tidak sah */
+  if (nampakIC && digit.length > 12) {
+    kawasanHasil.innerHTML =
+      '<div class="notis notis-ralat">Format nombor IC tidak sah. Nombor IC perlu 12 digit (contoh: 130101140001).</div>';
+    return;
+  }
+
+  var hasil = cariMurid(q);
+
+  if (hasil.length === 0) {
+    var mesej = nampakIC
+      ? 'Tiada rekod murid dengan nombor IC "<strong>' + esc(q.trim()) + '</strong>". Sila semak semula nombor tersebut.'
+      : 'Tiada rekod murid ditemui untuk "<strong>' + esc(q.trim()) + '</strong>". Sila semak ejaan nama atau cuba nombor IC.';
+    kawasanHasil.innerHTML = '<div class="notis notis-amaran">' + mesej + '</div>';
+    return;
+  }
+
+  var tajuk = hasil.length > 1
+    ? '<div class="notis notis-info">Ditemui: <strong>' + hasil.length + '</strong> murid padan carian.</div>'
+    : '';
+
+  kawasanHasil.innerHTML = tajuk + hasil.map(function (h) {
+    return kadProfil(h.murid, h.kehadiran);
+  }).join('');
+}
+
+/* --- Borang carian --- */
+document.getElementById('borang-cari').addEventListener('submit', function (e) {
+  e.preventDefault();
+  laksanaCarian();
+});
+
+/* --- Chip contoh --- */
+document.querySelectorAll('.bantuan-chip').forEach(function (chip) {
+  chip.addEventListener('click', function () {
+    document.getElementById('input-cari').value = chip.dataset.q;
+    laksanaCarian();
+  });
+});
+</script>
+</body>
+</html>
