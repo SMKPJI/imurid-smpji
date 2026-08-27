@@ -305,17 +305,32 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    /* Semak folderLaporan sudah diset */
+    var tet = getTetapan() || {};
+    if (!tet.folderLaporan || tet.folderLaporan.indexOf('PASTE_FOLDER_ID') !== -1) {
+      kawasan.innerHTML = '<div class="notis notis-ralat">❌ <strong>folderLaporan belum diset.</strong><br>Buka tab Tetapan dalam Google Sheet, set kunci <code>folderLaporan</code> dengan ID folder Drive yang betul.<br><small>ID folder ada dalam URL: <code>drive.google.com/drive/folders/<strong>ID_DI_SINI</strong></code></small></div>';
+      butang.disabled = false;
+      return;
+    }
+
     uploadLaporan(bulan, fail)
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json().catch(function () { return {}; });
+        return res.json();
       })
-      .then(function () {
-        kawasan.innerHTML = '<div class="notis notis-jaya">✅ Laporan <strong>' + esc(bulan) + '</strong> berjaya dimuat naik ke pelayan.</div>';
+      .then(function (result) {
+        if (!result || !result.success) {
+          var errMsg = (result && result.error) ? result.error : 'Ralat tidak diketahui';
+          throw new Error(errMsg);
+        }
+        var msg = result.extracted
+          ? '✅ Laporan <strong>' + esc(bulan) + '</strong> dimuat naik & data berjaya diimport ke Google Sheet.'
+          : '⚠️ Laporan <strong>' + esc(bulan) + '</strong> dimuat naik ke Drive. Extraction automatik gagal — sila guna <code>extract_kehadiran.py</code>.';
+        kawasan.innerHTML = '<div class="notis notis-jaya">' + msg + '</div>';
         butang.disabled = false;
         inputFail.value = '';
         document.getElementById('teks-fail').textContent = 'Klik untuk pilih fail PDF…';
-        syncDataFromApi(); /* muat semula arkib daripada pelayan */
+        syncDataFromApi();
       })
       .catch(function (err) {
         kawasan.innerHTML =
