@@ -8,7 +8,7 @@
    ========================================================================== */
 
 /* ---------- Tetapan API (isi selepas deploy Apps Script) ---------- */
-window.API_URL = 'https://script.google.com/macros/s/AKfycbwSG1L_YdZDacKBx1oaPfPBf0q5_qVj9TjT6jut8ok00LFKAMglE7z1fQXDjfAXo_O_/exec';   /* Contoh: 'https://script.google.com/macros/s/ABCDEF/exec' */
+window.API_URL = 'https://script.google.com/macros/s/AKfycbwSG1L_YdZDacKBx1oaPfPBf0q5_qVj9TjT6jut8ok00LFKAMglE7z1fQXDjfAXo_O_/exec';
 
 /* ---------- Kunci localStorage ---------- */
 var KUNCI_MURID     = 'imurid_murid';
@@ -298,11 +298,34 @@ function syncDataFromApi() {
    doPost menerima FormData: {action:'uploadLaporan', bulan, file}
    ========================================================================== */
 function uploadLaporan(bulan, fileObj) {
-  var fd = new FormData();
-  fd.append('action', 'uploadLaporan');
-  fd.append('bulan', bulan);
-  fd.append('file', fileObj);
-  return fetch(window.API_URL, { method: 'POST', body: fd });
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var base64 = reader.result.split(',')[1];
+      var payload = {
+        action: 'uploadLaporan',
+        bulan: bulan,
+        failName: fileObj.name,
+        failContent: base64
+      };
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () { controller.abort(); }, 120000);
+      fetch(window.API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        signal: controller.signal
+      }).then(function (res) {
+        clearTimeout(timeoutId);
+        resolve(res);
+      }).catch(function (err) {
+        clearTimeout(timeoutId);
+        reject(err);
+      });
+    };
+    reader.onerror = function () { reject(new Error('Gagal baca fail')); };
+    reader.readAsDataURL(fileObj);
+  });
 }
 
 /* ---------- Simpan arkib (guna oleh halaman admin / mod demo) ---------- */
