@@ -316,9 +316,11 @@ document.addEventListener('DOMContentLoaded', function () {
     uploadLaporan(bulan, fail)
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json();
+        return res.text();
       })
-      .then(function (result) {
+      .then(function (rawText) {
+        var result;
+        try { result = JSON.parse(rawText); } catch (e) { throw new Error('Respons pelayan bukan JSON: ' + rawText.substring(0, 200)); }
         if (!result || !result.success) {
           var errMsg = (result && result.error) ? result.error : 'Ralat tidak diketahui';
           throw new Error(errMsg);
