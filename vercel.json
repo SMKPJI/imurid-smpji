@@ -1,5 +1,8 @@
 {
   "functions": {
+    "api/proxy.py": {
+      "maxDuration": 60
+    },
     "api/extract.py": {
       "maxDuration": 30
     }

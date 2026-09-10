@@ -496,11 +496,16 @@ function importKehadiran_(ss, bulan, rows) {
   if (!rows || rows.length === 0) {
     return { success: false, error: 'Tiada data untuk diimport.' };
   }
-  
+
   const sheet = ss.getSheetByName(CONFIG.SHEETS.KEHADIRAN);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
-  
-  // Cari kolum bulan (contoh: 'Mac 2026')
+  if (!sheet) {
+    return { success: false, error: 'Tab Kehadiran tidak dijumpai.' };
+  }
+
+  // Baca sekali sahaja. Jangan gunakan setValue/getRange dalam gelung murid:
+  // 679 murid boleh menyebabkan Apps Script melebihi had masa.
+  const lastCol = Math.max(sheet.getLastColumn(), 15);
+  const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
   let kolumIdx = -1;
   for (let i = 0; i < headers.length; i++) {
     if (String(headers[i]).trim() === String(bulan).trim()) {
@@ -509,45 +514,70 @@ function importKehadiran_(ss, bulan, rows) {
     }
   }
   if (kolumIdx === -1) {
-    return { success: false, error: 'Kolum bulan ' + bulan + ' tidak dijumpai. Run setupSheet() dahulu.' };
+    return { success: false, error: 'Kolum bulan ' + bulan + ' tidak dijumpai. Run setupTabKehadiran() dahulu.' };
   }
-  
+
+  const nilaiIdx = BULAN.map(function (b) {
+    return b.toLowerCase();
+  }).indexOf(String(bulan).split(/\s+/)[0].toLowerCase());
+  if (nilaiIdx < 0) {
+    return { success: false, error: 'Nama bulan tidak disokong: ' + bulan };
+  }
+
   const data = sheet.getDataRange().getValues();
+  const indeksNoIC = {};
+  for (let i = 1; i < data.length; i++) {
+    const icRow = String(data[i][0] == null ? '' : data[i][0]).trim().replace(/[^0-9]/g, '').padStart(12, '0');
+    if (icRow && icRow !== '000000000000') indeksNoIC[icRow] = i;
+  }
+
   let dikemaskini = 0;
-  let ditambah = 0;
-  
-  const nilaiIdx = BULAN.map(function (b) { return b.toLowerCase(); }).indexOf(String(bulan).split(/\s+/)[0].toLowerCase());
+  const barisBaharu = [];
+  const diproses = {};
+
   rows.forEach(function (r) {
-    const ic = String(r.ic || '').trim().padStart(12, '0');
+    const ic = String(r.ic || '').trim().replace(/[^0-9]/g, '').padStart(12, '0');
+    if (!ic || ic === '000000000000' || diproses[ic]) return;
+    diproses[ic] = true;
+
     const nilai = r.nilai || [];
-    const jumlah = r.jumlah != null ? r.jumlah : 0;
-    let jumpa = false;
-    
-    for (let i = 1; i < data.length; i++) {
-      const icRow = String(data[i][0] || '').trim().padStart(12, '0');
-      if (icRow === ic) {
-        // Update nilai bulan + jumlah
-        sheet.getRange(i + 1, kolumIdx).setValue(nilai[nilaiIdx] != null ? nilai[nilaiIdx] : 0);
-        // Kira semula jumlah (jumlah semua kolum 3..14)
-        const bulanValues = sheet.getRange(i + 1, 3, 1, 12).getValues()[0];
-        const jumlahBaru = bulanValues.reduce(function (a, b) { return (Number(a) || 0) + (Number(b) || 0); }, 0);
-        sheet.getRange(i + 1, 15).setValue(jumlahBaru);
-        data[i][0] = ic; // update cache
-        dikemaskini++;
-        jumpa = true;
-        break;
-      }
-    }
-    
-    if (!jumpa) {
-      // Murid takde dalam sheet — tambah baris baru
-      const rowBaru = [ic, r.nama || ''].concat(Array(12).fill(0)).concat([jumlah]);
-      rowBaru[kolumIdx - 1] = nilai[nilaiIdx] != null ? nilai[nilaiIdx] : 0;
-      sheet.appendRow(rowBaru);
-      ditambah++;
+    const nilaiBulan = Number(nilai[nilaiIdx]) || 0;
+    const rowIndex = indeksNoIC[ic];
+
+    if (rowIndex !== undefined) {
+      // Kemas kini cache dalam memori; nilai sebenar ditulis secara kelompok di bawah.
+      data[rowIndex][kolumIdx - 1] = nilaiBulan;
+      dikemaskini++;
+    } else {
+      const rowBaru = [ic, r.nama || ''].concat(Array(12).fill(0)).concat([0]);
+      rowBaru[kolumIdx - 1] = nilaiBulan;
+      rowBaru[14] = Array(12).fill(0).reduce(function (jumlah, _, j) {
+        return jumlah + (j === nilaiIdx ? nilaiBulan : 0);
+      }, 0);
+      barisBaharu.push(rowBaru);
     }
   });
-  
+
+  // Kira semula Jumlah berdasarkan 12 bulan untuk semua baris sedia ada.
+  for (let i = 1; i < data.length; i++) {
+    data[i][14] = data[i].slice(2, 14).reduce(function (jumlah, nilai) {
+      return jumlah + (Number(nilai) || 0);
+    }, 0);
+  }
+
+  // Maksimum dua operasi tulis untuk data sedia ada + satu operasi append.
+  if (data.length > 1) {
+    sheet.getRange(2, kolumIdx, data.length - 1, 1).setValues(
+      data.slice(1).map(function (row) { return [row[kolumIdx - 1]]; })
+    );
+    sheet.getRange(2, 15, data.length - 1, 1).setValues(
+      data.slice(1).map(function (row) { return [row[14]]; })
+    );
+  }
+  if (barisBaharu.length) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, barisBaharu.length, 15).setValues(barisBaharu);
+  }
+
   // Update status Arkib → SELESAI
   const arkib = ss.getSheetByName(CONFIG.SHEETS.ARKIB);
   if (arkib) {
@@ -556,14 +586,14 @@ function importKehadiran_(ss, bulan, rows) {
     const tarikh = Utilities.formatDate(new Date(), tz, 'dd-MM-yyyy HH:mm');
     for (let i = 1; i < arkibData.length; i++) {
       if (String(arkibData[i][0]).trim() === String(bulan).trim()) {
-        arkib.getRange(i + 1, 2).setValue('SELESAI');
-        arkib.getRange(i + 1, 3).setValue(tarikh);
+        arkib.getRange(i + 1, 2, 1, 2).setValues([['SELESAI', tarikh]]);
         break;
       }
     }
   }
-  
-  return { success: true, message: 'Import ' + bulan + ' siap: ' + dikemaskini + ' dikemaskini, ' + ditambah + ' baru.', dikemaskini: dikemaskini, ditambah: ditambah };
+
+  const mesej = 'Import ' + bulan + ' siap: ' + dikemaskini + ' dikemaskini, ' + barisBaharu.length + ' baru.';
+  return { success: true, message: mesej, dikemaskini: dikemaskini, ditambah: barisBaharu.length };
 }
 
 // ============================================================
