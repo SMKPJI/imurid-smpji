@@ -7,8 +7,13 @@
    - Tetapkan API_URL di bawah selepas deploy Code.gs
    ========================================================================== */
 
-/* ---------- Tetapan API (isi selepas deploy Apps Script) ---------- */
-window.API_URL = 'https://script.google.com/macros/s/AKfycbwSG1L_YdZDacKBx1oaPfPBf0q5_qVj9TjT6jut8ok00LFKAMglE7z1fQXDjfAXo_O_/exec';
+/* ---------- Tetapan API (proxy same-origin Vercel -> Apps Script) ---------- */
+/*
+   Jangan panggil Apps Script terus dari browser: Google kadang-kadang
+   redirect POST ke script.googleusercontent.com sebelum header CORS dihantar.
+   Proxy /api/proxy berada pada domain iMurid sendiri.
+*/
+window.API_URL = '/api/proxy';
 
 /* ---------- Kunci localStorage ---------- */
 var KUNCI_MURID     = 'imurid_murid';
