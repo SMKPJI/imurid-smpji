@@ -700,7 +700,10 @@ function importGoogleSheet_(ss, bulan, sheetUrl) {
 function getData_(ss, sheetName) {
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return [];
-  const values = sheet.getDataRange().getValues();
+  // Guna getDisplayValues() supaya sel tarikh tidak menjadi ISO date.
+  // getValues() pulangkan objek Date untuk sel berformat tarikh,
+  // yang kemudian diJSONkan menjadi "2025-12-31T16:00:00.000Z".
+  const values = sheet.getDataRange().getDisplayValues();
   if (values.length < 2) return [];
   const headers = values[0];
   const rows = [];

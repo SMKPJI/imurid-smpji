@@ -299,12 +299,31 @@ function syncDataFromApi() {
         };
       });
 
-      /* Arkib */
+      /* Arkib — sanitasi Bulan & Tarikh */
       var arkib = (data.arkib || []).map(function (r) {
+        var bulan = String(r.Bulan || '');
+        var tarikh = String(r.Tarikh || '');
+        /* Jika Bulan tersalah format tarikh (ISO), tukar kembali */
+        if (/^\d{4}-\d{2}-\d{2}/.test(bulan)) {
+          var d = new Date(bulan);
+          if (!isNaN(d.getTime())) {
+            var bm = ['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogs','Sep','Okt','Nov','Dis'];
+            bulan = bm[d.getMonth()] + ' ' + d.getFullYear();
+          }
+        }
+        /* Jika Tarikh tersalah format ISO, tukar ke dd-MM-yyyy HH:mm */
+        if (/^\d{4}-\d{2}-\d{2}T/.test(tarikh)) {
+          var td = new Date(tarikh);
+          if (!isNaN(td.getTime())) {
+            var pad = function (n) { return String(n).padStart(2, '0'); };
+            tarikh = pad(td.getDate()) + '-' + pad(td.getMonth() + 1) + '-' + td.getFullYear() +
+                     ' ' + pad(td.getHours()) + ':' + pad(td.getMinutes());
+          }
+        }
         return {
-          Bulan:  String(r.Bulan || ''),
+          Bulan:  bulan,
           Status: String(r.Status || ''),
-          Tarikh: String(r.Tarikh || ''),
+          Tarikh: tarikh,
           FailID: String(r.FailID || '')
         };
       });
