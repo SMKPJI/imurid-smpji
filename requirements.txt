@@ -1,2 +1,1 @@
 pymupdf==1.28.2
-flask>=2.0
