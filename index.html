@@ -157,7 +157,7 @@ function renderHalaman() {
     return {
       nama: k.nama || (m ? m.nama : ''),
       ic: k.ic || (m ? m.ic : ''),
-      kelas: m ? m.kelasPenuh : '—',
+      kelasPenuh: m ? m.kelasPenuh : '—',
       jumlah: parseInt(k.jumlah, 10) || 0
     };
   }).sort(function (a, b) { return b.jumlah - a.jumlah; }).slice(0, 10);

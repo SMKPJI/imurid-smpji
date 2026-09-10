@@ -139,15 +139,51 @@ function getMurid() {
   return MOCK_MURID.slice();
 }
 
+/* Normalisasi NoIC untuk silang data Murid ↔ Kehadiran. */
+function normalisasiNoIC(ic) {
+  var digit = String(ic == null ? '' : ic).replace(/[^0-9]/g, '');
+  return digit ? digit.padStart(12, '0') : '';
+}
+
+/*
+   Sumber Tingkatan/Kelas rasmi ialah tab Murid.
+   Kehadiran hanya membawa NoIC + nilai bulan; fungsi ini melampirkan
+   maklumat kelas selepas padanan NoIC supaya semua halaman guna logik sama.
+*/
+function silangKehadiranDenganMurid(kehadiran, murid) {
+  var petaMurid = {};
+  (murid || []).forEach(function (m) {
+    var ic = normalisasiNoIC(m && (m.ic != null ? m.ic : m.NoIC));
+    if (ic) petaMurid[ic] = m;
+  });
+
+  return (kehadiran || []).map(function (k) {
+    var ic = normalisasiNoIC(k && (k.ic != null ? k.ic : k.NoIC));
+    var m = ic ? petaMurid[ic] : null;
+    var tgkt = m ? String(m.tingkatan || m.Tingkatan || '').trim() : '';
+    var kelas = m ? String(m.kelas || m.Kelas || '').trim() : '';
+    return Object.assign({}, k, {
+      ic: ic || String(k && (k.ic != null ? k.ic : k.NoIC) || '').trim(),
+      muridId: m ? String(m.id || m.ID || '') : '',
+      namaMurid: m ? String(m.nama || m.Nama || '') : '',
+      tingkatan: tgkt,
+      kelas: kelas,
+      kelasPenuh: (tgkt && kelas) ? (tgkt + ' ' + kelas) : (tgkt || kelas)
+    });
+  });
+}
+
 function getKehadiran() {
+  var kehadiran = null;
   try {
     var raw = localStorage.getItem(KUNCI_KEHADIRAN);
     if (raw) {
       var k = JSON.parse(raw);
-      if (Array.isArray(k)) return k;
+      if (Array.isArray(k)) kehadiran = k;
     }
   } catch (e) { /* langkau */ }
-  return MOCK_KEHADIRAN.slice();
+  if (!kehadiran) kehadiran = MOCK_KEHADIRAN.slice();
+  return silangKehadiranDenganMurid(kehadiran, getMurid());
 }
 
 function getArkib() {
