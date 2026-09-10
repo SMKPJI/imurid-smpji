@@ -21,7 +21,9 @@ const CONFIG = {
     KEHADIRAN: 'Kehadiran',
     ARKIB: 'Arkib'
   },
-  FOLDER_LAPORAN: 'PASTE_FOLDER_ID_DI_SINI'  // folder Drive untuk simpan PDF
+  FOLDER_LAPORAN: 'PASTE_FOLDER_ID_DI_SINI',  // folder Drive untuk simpan PDF
+  // URL Vercel serverless function (api/extract.py) — letak selepas deploy Vercel
+  EXTRACT_API_URL: 'PASTE_VERCEL_API_URL_DI_SINI'  // contoh: https://imurid-smpji.vercel.app/api/extract
 };
 
 const BULAN = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogs', 'Sep', 'Okt', 'Nov', 'Dis'];
@@ -146,7 +148,10 @@ function setupTabKehadiran() {
     arkib.getRange(2, 1, lastRow - 1, 1).setNumberFormat('@');
   }
   
-  SpreadsheetApp.getUi().alert('✅ Tab Kehadiran dibaiki: header ' + headerKehadiran.join(', ') + '\n\nData Murid TIDAK disentuh.');
+  const laporanK = '✅ Tab Kehadiran dibaiki: header ' + headerKehadiran.join(', ') + '\n\nData Murid TIDAK disentuh.';
+  Logger.log(laporanK);
+  try { SpreadsheetApp.getUi().alert(laporanK); } catch (e) { /* run dari editor: log sahaja */ }
+  return laporanK;
 }
 
 // ============================================================
@@ -158,12 +163,12 @@ function setupTabKehadiran() {
 // ============================================================
 function baikiSemua() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let dipadam = 0;   // FIX: diisytihar di luar blok supaya boleh dibaca di alert
   
   // 1. Arkib: format kolum Bulan sebagai teks + buang rekod pelik
   const arkib = ss.getSheetByName(CONFIG.SHEETS.ARKIB);
   if (arkib) {
     const data = arkib.getDataRange().getValues();
-    let dipadam = 0;
     for (let i = data.length - 1; i >= 1; i--) {
       const b = String(data[i][0] || '');
       // Rekod pelik = format tarikh (bukan "Jan 2026" pattern)
@@ -190,7 +195,11 @@ function baikiSemua() {
     m.getRange(2, 1, lastRow - 1, 3).setNumberFormat('@');
   }
   
-  SpreadsheetApp.getUi().alert('✅ BaikiSemua siap!\n\n- Rekod Arkib format tarikh: dipadam ' + dipadam + '\n- Kolum Bulan: Plain Text\n- Header Kehadiran: teks\n- NoIC Murid: teks');
+  const laporan = '✅ BaikiSemua siap!\n\n- Rekod Arkib format tarikh: dipadam ' + dipadam +
+                  '\n- Kolum Bulan: Plain Text\n- Header Kehadiran: teks\n- NoIC Murid: teks';
+  Logger.log(laporan);
+  try { SpreadsheetApp.getUi().alert(laporan); } catch (e) { /* run dari editor: log sahaja */ }
+  return laporan;
 }
 
 // ============================================================
@@ -252,6 +261,7 @@ function doPost(e) {
     switch (action) {
       case 'uploadLaporan': result = uploadLaporan_(ss, data.bulan, data.failName, data.failContent); break;
       case 'importKehadiran': result = importKehadiran_(ss, data.bulan, data.rows); break;
+      case 'importGoogleSheet': result = importGoogleSheet_(ss, data.bulan, data.sheetUrl); break;
       case 'updateTetapan': result = updateTetapan_(ss, data.kunci, data.nilai); break;
       default: result = { success: false, error: 'Action tidak dikenali: ' + action };
     }
@@ -288,18 +298,18 @@ function uploadLaporan_(ss, bulan, failName, failContent) {
       sediaAda.next().setTrashed(true);
     }
     
-    const blob = Utilities.newBlob(failContent, 'application/pdf', namaFail);
+    const blob = Utilities.newBlob(Utilities.base64Decode(failContent), 'application/pdf', namaFail);
     const failBaru = folder.createFile(blob);
     
-    // Update/rekod dalam Arkib
+    // Update/rekod dalam Arkib — status PROSES
     const arkib = ss.getSheetByName(CONFIG.SHEETS.ARKIB);
     const data = arkib.getDataRange().getValues();
     const tz = ss.getSpreadsheetTimeZone();
     const tarikh = Utilities.formatDate(new Date(), tz, 'dd-MM-yyyy HH:mm');
     let dijumpai = false;
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == bulan) {
-        arkib.getRange(i + 1, 2).setValue('MENUNGGU');
+      if (String(data[i][0]).trim() === bulan.trim()) {
+        arkib.getRange(i + 1, 2).setValue('PROSES');
         arkib.getRange(i + 1, 3).setValue(tarikh);
         arkib.getRange(i + 1, 4).setValue(failBaru.getId());
         dijumpai = true;
@@ -307,13 +317,173 @@ function uploadLaporan_(ss, bulan, failName, failContent) {
       }
     }
     if (!dijumpai) {
-      arkib.appendRow([bulan, 'MENUNGGU', tarikh, failBaru.getId()]);
+      arkib.appendRow([bulan, 'PROSES', tarikh, failBaru.getId()]);
     }
     
-    return { success: true, message: 'Laporan ' + bulan + ' dimuat naik. Status: MENUNGGU (extraction).', failId: failBaru.getId() };
+    // cuba extract automatik
+    const extractResult = extractAndImport_(ss, bulan, failBaru);
+    
+    return {
+      success: true,
+      message: extractResult.success
+        ? 'Laporan ' + bulan + ' dimuat naik & data berjaya diimport (' + extractResult.dikemaskini + ' dikemaskini, ' + extractResult.ditambah + ' baru).'
+        : 'Laporan ' + bulan + ' dimuat naik. Extraction gagal: ' + (extractResult.error || 'unknown') + '. Sila guna script extract_kehadiran.py.',
+      failId: failBaru.getId(),
+      extracted: extractResult.success
+    };
   } catch (err) {
     return { success: false, error: err.toString() };
   }
+}
+
+// ============================================================
+// EXTRACT AUTOMATIK — panggil Vercel function (pymupdf), fallback parser
+// ============================================================
+function extractAndImport_(ss, bulan, fail) {
+  try {
+    const blob = fail.getBlob();
+    const contentType = blob.getContentType();
+    
+    if (contentType && contentType.indexOf('pdf') === -1) {
+      return { success: false, error: 'Bukan fail PDF. Guna extract_kehadiran.py.' };
+    }
+    
+    // 1) Cuba Vercel function (pymupdf handle PDF gambar/teks)
+    const apiUrl = (getTetapanObj_(ss).extractApiUrl || CONFIG.EXTRACT_API_URL || '').trim();
+    if (apiUrl && apiUrl.indexOf('PASTE_VERCEL') === -1) {
+      try {
+        const pdfB64 = Utilities.base64Encode(blob.getBytes());
+        const options = {
+          method: 'post',
+          contentType: 'application/json',
+          payload: JSON.stringify({ pdf_b64: pdfB64 }),
+          muteHttpExceptions: true
+        };
+        const resp = UrlFetchApp.fetch(apiUrl, options);
+        const hasil = JSON.parse(resp.getContentText());
+        
+        if (hasil.success && hasil.rows && hasil.rows.length) {
+          const importResult = importKehadiran_(ss, bulan, hasil.rows);
+          return {
+            success: importResult.success,
+            dikemaskini: importResult.dikemaskini || 0,
+            ditambah: importResult.ditambah || 0,
+            error: importResult.success ? null : importResult.error,
+            source: 'vercel'
+          };
+        }
+        // gagal di Vercel — fallback ke parser teks Apps Script
+        Logger.log('Vercel extract gagal: ' + (hasil.error || 'unknown'));
+      } catch (vercelErr) {
+        Logger.log('Vercel extract exception: ' + vercelErr.toString());
+      }
+    }
+    
+    // 2) Fallback: parser teks Apps Script (PDF bukan gambar)
+    let text = '';
+    try {
+      text = blob.getDataAsString('utf-8');
+    } catch (e) {
+      return { success: false, error: 'PDF gambar/scanned — perlu guna extract_kehadiran.py manual.' };
+    }
+    
+    if (!text || text.length < 100) {
+      return { success: false, error: 'PDF tiada teks (gambar/scanned) — perlu extract_kehadiran.py manual.' };
+    }
+    if ((text.match(/\d{12}/g) || []).length < 1) {
+      return { success: false, error: 'PDF tiada nombor IC. Bukan format laporan KPM?' };
+    }
+    
+    const rows = parseKpmText_(text);
+    if (!rows || rows.length === 0) {
+      return { success: false, error: 'Tiada data murid dijumpai. Guna extract_kehadiran.py.' };
+    }
+    
+    const importResult = importKehadiran_(ss, bulan, rows);
+    return {
+      success: importResult.success,
+      dikemaskini: importResult.dikemaskini || 0,
+      ditambah: importResult.ditambah || 0,
+      error: importResult.success ? null : importResult.error,
+      source: 'appsscript'
+    };
+  } catch (err) {
+    return { success: false, error: 'Extract error: ' + err.toString() };
+  }
+}
+
+// ============================================================
+// PARSER — extract data murid dari teks PDF KPM
+// ============================================================
+function parseKpmText_(text) {
+  const lines = text.split(/\r?\n/);
+  const murid = [];
+  const seen = new Set();
+  
+  const icPattern = /\d{12}/;
+  const bulanPattern = /^(Jan|Feb|Mac|Apr|Mei|Jun|Jul|Ogs|Sep|Okt|Nov|Dis)\s+20\d{2}$/i;
+  
+  let headerFound = false;
+  let monthCols = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // cari header bulan
+    if (!headerFound && bulanPattern.test(line)) {
+      headerFound = true;
+      continue;
+    }
+    
+    if (!headerFound) continue;
+    
+    // cari IC 12 digit
+    const icMatch = line.match(icPattern);
+    if (!icMatch) continue;
+    
+    const ic = icMatch[0];
+    if (seen.has(ic)) continue;
+    
+    // cari nama — baris sebelum IC biasanya nama
+    let nama = '';
+    if (i > 0) {
+      const prevLine = lines[i - 1].trim();
+      if (prevLine && !icPattern.test(prevLine) && prevLine.length > 3) {
+        nama = prevLine;
+      }
+    }
+    
+    // fallback: nama mungkin dalam baris yang sama
+    if (!nama) {
+      const parts = line.split(ic);
+      if (parts[0] && parts[0].trim().length > 3) {
+        nama = parts[0].trim();
+      }
+    }
+    
+    if (!nama) continue;
+    
+    // extract nilai bulan — 12 nombor selepas IC
+    const afterIc = line.substring(line.indexOf(ic) + 12);
+    const nums = afterIc.match(/\d+/g) || [];
+    const nilai = [];
+    for (let j = 0; j < 12; j++) {
+      nilai.push(parseInt(nums[j], 10) || 0);
+    }
+    
+    // jumlah — nombor terakhir
+    let jumlah = 0;
+    if (nums.length > 12) {
+      jumlah = parseInt(nums[12], 10) || 0;
+    } else {
+      jumlah = nilai.reduce(function (a, b) { return a + b; }, 0);
+    }
+    
+    seen.add(ic);
+    murid.push({ ic: ic, nama: nama, nilai: nilai, jumlah: jumlah });
+  }
+  
+  return murid;
 }
 
 // ============================================================
@@ -328,12 +498,12 @@ function importKehadiran_(ss, bulan, rows) {
   }
   
   const sheet = ss.getSheetByName(CONFIG.SHEETS.KEHADIRAN);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
   
   // Cari kolum bulan (contoh: 'Mac 2026')
   let kolumIdx = -1;
   for (let i = 0; i < headers.length; i++) {
-    if (String(headers[i]).indexOf(bulan) !== -1) {
+    if (String(headers[i]).trim() === String(bulan).trim()) {
       kolumIdx = i + 1;
       break;
     }
@@ -346,6 +516,7 @@ function importKehadiran_(ss, bulan, rows) {
   let dikemaskini = 0;
   let ditambah = 0;
   
+  const nilaiIdx = BULAN.map(function (b) { return b.toLowerCase(); }).indexOf(String(bulan).split(/\s+/)[0].toLowerCase());
   rows.forEach(function (r) {
     const ic = String(r.ic || '').trim().padStart(12, '0');
     const nilai = r.nilai || [];
@@ -356,7 +527,7 @@ function importKehadiran_(ss, bulan, rows) {
       const icRow = String(data[i][0] || '').trim().padStart(12, '0');
       if (icRow === ic) {
         // Update nilai bulan + jumlah
-        sheet.getRange(i + 1, kolumIdx).setValue(nilai[kolumIdx - 3] != null ? nilai[kolumIdx - 3] : 0);
+        sheet.getRange(i + 1, kolumIdx).setValue(nilai[nilaiIdx] != null ? nilai[nilaiIdx] : 0);
         // Kira semula jumlah (jumlah semua kolum 3..14)
         const bulanValues = sheet.getRange(i + 1, 3, 1, 12).getValues()[0];
         const jumlahBaru = bulanValues.reduce(function (a, b) { return (Number(a) || 0) + (Number(b) || 0); }, 0);
@@ -371,7 +542,7 @@ function importKehadiran_(ss, bulan, rows) {
     if (!jumpa) {
       // Murid takde dalam sheet — tambah baris baru
       const rowBaru = [ic, r.nama || ''].concat(Array(12).fill(0)).concat([jumlah]);
-      rowBaru[kolumIdx - 1] = nilai[kolumIdx - 3] != null ? nilai[kolumIdx - 3] : 0;
+      rowBaru[kolumIdx - 1] = nilai[nilaiIdx] != null ? nilai[nilaiIdx] : 0;
       sheet.appendRow(rowBaru);
       ditambah++;
     }
@@ -384,7 +555,7 @@ function importKehadiran_(ss, bulan, rows) {
     const tz = ss.getSpreadsheetTimeZone();
     const tarikh = Utilities.formatDate(new Date(), tz, 'dd-MM-yyyy HH:mm');
     for (let i = 1; i < arkibData.length; i++) {
-      if (arkibData[i][0] == bulan) {
+      if (String(arkibData[i][0]).trim() === String(bulan).trim()) {
         arkib.getRange(i + 1, 2).setValue('SELESAI');
         arkib.getRange(i + 1, 3).setValue(tarikh);
         break;
@@ -393,6 +564,104 @@ function importKehadiran_(ss, bulan, rows) {
   }
   
   return { success: true, message: 'Import ' + bulan + ' siap: ' + dikemaskini + ' dikemaskini, ' + ditambah + ' baru.', dikemaskini: dikemaskini, ditambah: ditambah };
+}
+
+// ============================================================
+// IMPORT DARIPADA GOOGLE SHEET SUMBER
+// Format disokong:
+// Bil | Nama (dan NoIC dalam sel sama) | Jan 2026 | ... | Jumlah
+// atau Bil | Nama | NoIC | Jan 2026 | ... | Jumlah
+// ============================================================
+function importGoogleSheet_(ss, bulan, sheetUrl) {
+  if (!bulan || !sheetUrl) {
+    return { success: false, error: 'Bulan atau link Google Sheet tidak lengkap.' };
+  }
+
+  try {
+    const idMatch = String(sheetUrl).match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    const sheetId = idMatch ? idMatch[1] : String(sheetUrl).trim();
+    if (!/^[a-zA-Z0-9-_]{20,}$/.test(sheetId)) {
+      return { success: false, error: 'Link Google Sheet tidak sah. Tampal link /spreadsheets/d/...' };
+    }
+
+    const source = SpreadsheetApp.openById(sheetId);
+    const sourceSheet = source.getSheets()[0];
+    const values = sourceSheet.getDataRange().getDisplayValues();
+    if (values.length < 2) return { success: false, error: 'Google Sheet sumber kosong.' };
+
+    const headers = values[0].map(h => String(h || '').trim());
+    const findHeader = function (patterns) {
+      for (let i = 0; i < headers.length; i++) {
+        const h = headers[i].toLowerCase().replace(/\s+/g, ' ');
+        if (patterns.some(p => h === p || h.indexOf(p) !== -1)) return i;
+      }
+      return -1;
+    };
+
+    const bulanIdx = findHeader([bulan.toLowerCase()]);
+    if (bulanIdx === -1) {
+      return { success: false, error: 'Kolum "' + bulan + '" tidak dijumpai dalam Google Sheet sumber. Header yang ada: ' + headers.join(', ') };
+    }
+
+    const noIcIdx = findHeader(['noic', 'no ic', 'ic number', 'ic']);
+    const namaIdx = findHeader(['nama', 'name']);
+    const jumlahIdx = findHeader(['jumlah', 'total']);
+    const bulanNombor = BULAN.map(b => b.toLowerCase()).indexOf(String(bulan).split(/\s+/)[0].toLowerCase());
+    if (bulanNombor < 0) {
+      return { success: false, error: 'Nama bulan tidak disokong: ' + bulan };
+    }
+    const rows = [];
+
+    for (let i = 1; i < values.length; i++) {
+      const row = values[i];
+      if (row.every(c => String(c || '').trim() === '')) continue;
+
+      let nama = namaIdx >= 0 ? String(row[namaIdx] || '').trim() : '';
+      let ic = noIcIdx >= 0 ? String(row[noIcIdx] || '').replace(/[^0-9]/g, '') : '';
+      // Format sumber Najmi: Nama + NoIC dalam satu sel
+      const gabung = row.map(c => String(c || '')).join(' ');
+      const icMatch = gabung.match(/\d{12}/);
+      if (!ic && icMatch) ic = icMatch[0];
+      if (nama) nama = nama.replace(/\s*\d{12}\s*$/, '').trim();
+      if (!nama && namaIdx < 0) nama = gabung.replace(/\d{12}/, '').trim();
+      if (!ic || !nama) continue;
+
+      const nilaiBulan = Number(String(row[bulanIdx] || '0').replace(/[^0-9.-]/g, '')) || 0;
+      const jumlah = jumlahIdx >= 0
+        ? Number(String(row[jumlahIdx] || '0').replace(/[^0-9.-]/g, '')) || 0
+        : nilaiBulan;
+      const nilai = Array(12).fill(0);
+      if (bulanNombor >= 0) nilai[bulanNombor] = nilaiBulan;
+      rows.push({ ic: ic.padStart(12, '0'), nama: nama, nilai: nilai, jumlah: jumlah });
+    }
+
+    if (!rows.length) return { success: false, error: 'Tiada baris murid yang mempunyai Nama dan NoIC 12 digit.' };
+    const result = importKehadiran_(ss, bulan, rows);
+    if (!result.success) return result;
+
+    // Rekod sumber Google Sheet dalam Arkib supaya status boleh dijejak
+    const arkib = ss.getSheetByName(CONFIG.SHEETS.ARKIB);
+    if (arkib) {
+      const arkibData = arkib.getDataRange().getValues();
+      const tarikh = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd-MM-yyyy HH:mm');
+      let dijumpai = false;
+      for (let i = 1; i < arkibData.length; i++) {
+        if (String(arkibData[i][0]).trim() === bulan.trim()) {
+          arkib.getRange(i + 1, 2, 1, 3).setValues([['SELESAI', tarikh, String(sheetUrl).trim()]]);
+          dijumpai = true;
+          break;
+        }
+      }
+      if (!dijumpai) arkib.appendRow([bulan, 'SELESAI', tarikh, String(sheetUrl).trim()]);
+    }
+
+    result.sourceRows = rows.length;
+    result.sourceSheet = sourceSheet.getName();
+    result.message = 'Import ' + bulan + ' siap daripada Google Sheet: ' + rows.length + ' baris sumber diproses (' + (result.dikemaskini || 0) + ' dikemaskini, ' + (result.ditambah || 0) + ' baru).';
+    return result;
+  } catch (err) {
+    return { success: false, error: 'Gagal baca Google Sheet: ' + err.toString() };
+  }
 }
 
 // ============================================================

@@ -78,15 +78,12 @@
               </select>
             </div>
             <div class="kumpulan-input">
-              <label for="input-fail">Fail Laporan (PDF)</label>
-              <label class="input-fail" for="input-fail">
-                <span class="input-fail-ikon">📄</span>
-                <span class="input-fail-teks" id="teks-fail">Klik untuk pilih fail PDF…</span>
-              </label>
-              <input type="file" id="input-fail" accept=".pdf,application/pdf" class="hidden" aria-label="Pilih fail PDF">
+              <label for="input-sheet-url">Link Google Sheet Sumber</label>
+              <input type="url" id="input-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." autocomplete="off" aria-label="Link Google Sheet sumber">
+              <small class="input-bantuan">Format: Bil · Nama + NoIC · Jan 2026 hingga Dis 2026 · Jumlah</small>
             </div>
           </div>
-          <button type="submit" class="butang butang-utama" id="butang-upload">📤 Muat Naik</button>
+          <button type="submit" class="butang butang-utama" id="butang-upload">🔄 Import Google Sheet</button>
           <div class="kawasan-status" id="kawasan-status-upload"></div>
         </form>
       </div>
@@ -254,92 +251,46 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  /* --- Papar nama fail dipilih --- */
-  var inputFail = document.getElementById('input-fail');
-  inputFail.addEventListener('change', function () {
-    var teks = document.getElementById('teks-fail');
-    if (teks) {
-      teks.textContent = (inputFail.files && inputFail.files.length)
-        ? inputFail.files[0].name
-        : 'Klik untuk pilih fail PDF…';
-    }
-  });
-
-  /* --- Muat naik laporan --- */
+  /* --- Import daripada Google Sheet sumber --- */
   var borangUpload = document.getElementById('borang-upload');
   borangUpload.addEventListener('submit', function (e) {
     e.preventDefault();
     var bulan = document.getElementById('pilih-bulan-upload').value;
-    var fail = inputFail.files && inputFail.files[0];
+    var sheetUrl = document.getElementById('input-sheet-url').value.trim();
     var kawasan = document.getElementById('kawasan-status-upload');
     var butang = document.getElementById('butang-upload');
 
-    if (!fail) {
-      kawasan.innerHTML = '<div class="notis notis-ralat">Sila pilih fail PDF terlebih dahulu.</div>';
+    if (!sheetUrl) {
+      kawasan.innerHTML = '<div class="notis notis-ralat">Sila tampal link Google Sheet sumber terlebih dahulu.</div>';
       return;
     }
-    if (!/\.pdf$/i.test(fail.name)) {
-      kawasan.innerHTML = '<div class="notis notis-ralat">Fail mestilah berformat PDF.</div>';
+    if (!/docs\.google\.com\/spreadsheets\/d\//i.test(sheetUrl)) {
+      kawasan.innerHTML = '<div class="notis notis-ralat">Link tidak sah. Gunakan link Google Sheets yang bermula dengan docs.google.com/spreadsheets/d/</div>';
+      return;
+    }
+    if (!window.API_URL) {
+      kawasan.innerHTML = '<div class="notis notis-ralat">API belum dikonfigurasi.</div>';
       return;
     }
 
     butang.disabled = true;
-    kawasan.innerHTML = '<div class="notis notis-info"><span class="spinner"></span> Sedang memuat naik ' + esc(bulan) + '…</div>';
-
-    if (!window.API_URL) {
-      /* Mod demo — API belum dikonfigurasi: simpan arkib secara tempatan */
-      setTimeout(function () {
-        try {
-          var arkib = getArkib();
-          arkib.unshift({ Bulan: bulan, Status: 'MENUNGGU', Tarikh: '', FailID: fail.name });
-          simpanArkib(arkib);
-        } catch (err) { /* langkau */ }
-        kawasan.innerHTML =
-          '<div class="notis notis-jaya">✅ Laporan <strong>' + esc(bulan) + '</strong> diterima (Mod Demo).<br>' +
-          '<small>API belum dikonfigurasi — rekod disimpan dalam arkib tempatan.</small></div>';
-        butang.disabled = false;
-        inputFail.value = '';
-        document.getElementById('teks-fail').textContent = 'Klik untuk pilih fail PDF…';
-        renderStatus();
-      }, 900);
-      return;
-    }
-
-    /* Semak folderLaporan sudah diset */
-    var tet = getTetapan() || {};
-    if (!tet.folderLaporan || tet.folderLaporan.indexOf('PASTE_FOLDER_ID') !== -1) {
-      kawasan.innerHTML = '<div class="notis notis-ralat">❌ <strong>folderLaporan belum diset.</strong><br>Buka tab Tetapan dalam Google Sheet, set kunci <code>folderLaporan</code> dengan ID folder Drive yang betul.<br><small>ID folder ada dalam URL: <code>drive.google.com/drive/folders/<strong>ID_DI_SINI</strong></code></small></div>';
-      butang.disabled = false;
-      return;
-    }
-
-    uploadLaporan(bulan, fail)
-      .then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.text();
-      })
-      .then(function (rawText) {
-        var result;
-        try { result = JSON.parse(rawText); } catch (e) { throw new Error('Respons pelayan bukan JSON: ' + rawText.substring(0, 200)); }
-        if (!result || !result.success) {
-          var errMsg = (result && result.error) ? result.error : 'Ralat tidak diketahui';
-          throw new Error(errMsg);
-        }
-        var msg = result.extracted
-          ? '✅ Laporan <strong>' + esc(bulan) + '</strong> dimuat naik & data berjaya diimport ke Google Sheet.'
-          : '⚠️ Laporan <strong>' + esc(bulan) + '</strong> dimuat naik ke Drive. Extraction automatik gagal — sila guna <code>extract_kehadiran.py</code>.';
-        kawasan.innerHTML = '<div class="notis notis-jaya">' + msg + '</div>';
-        butang.disabled = false;
-        inputFail.value = '';
-        document.getElementById('teks-fail').textContent = 'Klik untuk pilih fail PDF…';
-        syncDataFromApi();
+    kawasan.innerHTML = '<div class="notis notis-info"><span class="spinner"></span> Sedang membaca Google Sheet untuk ' + esc(bulan) + '…</div>';
+    fetch(window.API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'importGoogleSheet', bulan: bulan, sheetUrl: sheetUrl }),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (result) {
+        if (!result || !result.success) throw new Error((result && result.error) || 'Import gagal.');
+        kawasan.innerHTML = '<div class="notis notis-jaya">✅ ' + esc(result.message || ('Data ' + bulan + ' berjaya diimport.')) + '<br><small>Sumber: ' + esc(result.sourceSheet || 'Google Sheet') + '</small></div>';
+        document.getElementById('input-sheet-url').value = '';
+        syncDataFromApi().then(function () { renderHalaman(); });
       })
       .catch(function (err) {
-        kawasan.innerHTML =
-          '<div class="notis notis-ralat">❌ Ralat semasa memuat naik: ' +
-          esc(err && err.message ? err.message : 'Ralat tidak diketahui') + '. Sila cuba sebentar lagi.</div>';
-        butang.disabled = false;
-      });
+        kawasan.innerHTML = '<div class="notis notis-ralat">❌ ' + esc(err && err.message ? err.message : 'Import gagal.') + '</div>';
+      })
+      .finally(function () { butang.disabled = false; });
   });
 
   /* --- Log keluar --- */

@@ -703,7 +703,14 @@ main.container {
   color: var(--teks-muted);
 }
 
+.input-bantuan {
+  color: var(--teks-samarsamar);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
 .kumpulan-input input[type="text"],
+.kumpulan-input input[type="url"],
 .kumpulan-input input[type="password"],
 .kumpulan-input input[type="search"],
 .kumpulan-input select {
